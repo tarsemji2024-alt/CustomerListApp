@@ -2,17 +2,24 @@
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp" android:height="108dp"
     android:viewportWidth="108" android:viewportHeight="108">
+    <!-- नीला बैकग्राउंड -->
     <path android:fillColor="#1A73E8"
         android:pathData="M20,0 H88 A20,20 0 0 1 108,20 V88 A20,20 0 0 1 88,108 H20 A20,20 0 0 1 0,88 V20 A20,20 0 0 1 20,0 Z" />
+    <!-- डायरी का कवर -->
     <path android:fillColor="#FFC107"
         android:pathData="M36,20 H82 A4,4 0 0 1 86,24 V84 A4,4 0 0 1 82,88 H36 Z" />
+    <!-- डायरी की स्पाइन -->
     <path android:fillColor="#F9A825" android:pathData="M26,20 H38 V88 H26 Z" />
+    <!-- स्पाइन के छल्ले -->
     <path android:fillColor="#FFFFFF" android:pathData="M24,30 H40 V35 H24 Z" />
     <path android:fillColor="#FFFFFF" android:pathData="M24,50 H40 V55 H24 Z" />
     <path android:fillColor="#FFFFFF" android:pathData="M24,70 H40 V75 H24 Z" />
+    <!-- ऊपर का लेबल -->
     <path android:fillColor="#FFFFFF" android:pathData="M48,30 H70 V42 H48 Z" />
+    <!-- लिखी हुई लाइनें -->
     <path android:fillColor="#5D4037" android:pathData="M48,52 H76 V55 H48 Z" />
     <path android:fillColor="#5D4037" android:pathData="M48,62 H76 V65 H48 Z" />
     <path android:fillColor="#5D4037" android:pathData="M48,72 H68 V75 H48 Z" />
+    <!-- लाल बुकमार्क -->
     <path android:fillColor="#D93025" android:pathData="M74,20 H82 V40 L78,35 L74,40 Z" />
 </vector>
