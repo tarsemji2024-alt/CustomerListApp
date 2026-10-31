@@ -8,7 +8,7 @@
         android:textColor="#1B2330" android:layout_marginBottom="8dp" />
 
     <EditText android:id="@+id/search" android:layout_width="match_parent"
-        android:layout_height="wrap_content" android:hint="नाम, गाँव, मोबाइल, RSN से खोजें…"
+        android:layout_height="wrap_content" android:hint="नाम, गाँव, मोबाइल, RSN, वर्क ऑर्डर से खोजें…"
         android:inputType="text" android:background="#FFFFFF" android:padding="12dp" />
 
     <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
@@ -19,8 +19,16 @@
             android:layout_height="wrap_content" android:text="Yes" />
         <Button android:id="@+id/fNot" android:layout_width="0dp" android:layout_weight="1"
             android:layout_height="wrap_content" android:text="Not" />
-        <Button android:id="@+id/btnImport" android:layout_width="0dp" android:layout_weight="1.4"
+    </LinearLayout>
+
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:orientation="horizontal">
+        <Button android:id="@+id/btnImport" android:layout_width="0dp" android:layout_weight="1"
             android:layout_height="wrap_content" android:text="📥 इम्पोर्ट" />
+        <Button android:id="@+id/btnNew" android:layout_width="0dp" android:layout_weight="1"
+            android:layout_height="wrap_content" android:text="➕ नया" />
+        <Button android:id="@+id/btnExport" android:layout_width="0dp" android:layout_weight="1"
+            android:layout_height="wrap_content" android:text="📤 एक्सपोर्ट" />
     </LinearLayout>
 
     <TextView android:id="@+id/count" android:layout_width="wrap_content"
