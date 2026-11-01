@@ -2,17 +2,17 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent" android:layout_height="wrap_content"
     android:orientation="horizontal" android:gravity="center_vertical"
-    android:background="#FFFFFF" android:padding="12dp">
+    android:background="#1E1E24" android:padding="12dp">
 
     <LinearLayout android:layout_width="0dp" android:layout_weight="1"
         android:layout_height="wrap_content" android:orientation="vertical">
         <TextView android:id="@+id/tvName" android:layout_width="wrap_content"
             android:layout_height="wrap_content" android:textSize="16sp"
-            android:textStyle="bold" android:textColor="#1B2330" />
+            android:textStyle="bold" android:textColor="#FFFFFF" />
         <TextView android:id="@+id/tvSub1" android:layout_width="wrap_content"
-            android:layout_height="wrap_content" android:textColor="#667085" android:textSize="13sp" />
+            android:layout_height="wrap_content" android:textColor="#A0A0AA" android:textSize="13sp" />
         <TextView android:id="@+id/tvSub2" android:layout_width="wrap_content"
-            android:layout_height="wrap_content" android:textColor="#667085" android:textSize="12sp" />
+            android:layout_height="wrap_content" android:textColor="#A0A0AA" android:textSize="12sp" />
     </LinearLayout>
 
     <Button android:id="@+id/btnCall" android:layout_width="wrap_content"

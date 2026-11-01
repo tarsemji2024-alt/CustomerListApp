@@ -14,6 +14,7 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
 import android.provider.MediaStore;
+import android.util.Xml;
 import android.text.Editable;
 import android.text.InputType;
 import android.text.TextWatcher;
@@ -36,6 +37,10 @@ import org.json.JSONObject;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
+import java.io.InputStream;
+import java.math.BigDecimal;
+import org.xmlpull.v1.XmlPullParser;
+import java.util.zip.ZipFile;
 import java.io.OutputStream;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -48,17 +53,29 @@ import java.util.zip.ZipOutputStream;
 public class MainActivity extends Activity {
 
     static class Customer {
-        String id = "", name = "", village = "", mobile = "", rsn = "", type = "", status = "";
-        boolean isYes() { return status.toLowerCase(Locale.ROOT).startsWith("y"); }
+        String id = "", name = "", village = "", mobile = "", rsn = "", type = "", status = "", stb = "";
+        boolean isYes() { String l = status.toLowerCase(Locale.ROOT); return l.startsWith("y") || l.equals("ok"); }
         String all() {
-            return (id + " " + name + " " + village + " " + mobile + " " + rsn + " " + type + " " + status)
+            return (id + " " + name + " " + village + " " + mobile + " " + rsn + " " + type + " " + status + " " + stb)
                     .toLowerCase(Locale.ROOT);
         }
     }
 
     static final String SEED =
         "7101699225|Aman Sharma|Moonak|9518286292|RNOODGKQ0026476|ODU|not\n" +
-      
+        "7117226851|Gurjit Singh/joga Singh|Chural kalan|7888432167|RTHODGLK0013911|ODU|Yes\n" +
+        "7104015773|Harvinder Kumar|Moonak|9915208007|RTHODJKK0090400|ODU|Yes\n" +
+        "7112870241|Karam Chand/Balkar singh|Mackod|9855997492|RTHODHKK0127147|ODU|Yes\n" +
+        "7105549179|Karav singh|Moonak|6283766292|RARODEK00070403|ODU|yes\n" +
+        "7124888343|Rajpal Singh|moonak|9569097512|RHFODKL00050558|ODU|yes\n" +
+        "7099014543|Rajpal Singh|kaliya|7087131932|RHFODAL00068125|ODU|Yes\n" +
+        "7105541822|Sahil Singh|lahara|8699721397|RNOODGKQ0061065|ODU|yes\n" +
+        "7107477342|Sanju Singh|Balran|9646103506|RSVODJKBK048860|ODU|Yes\n" +
+        "7105217105|Sarbjeet Singh/baljinder|Navagavo|9463000633|RNOODGKQ0015576|ODU|Yes\n" +
+        "7104121994|Shashi Goyal|Moonak|8872691421|RSVODALBK463135|ODU|Yes\n" +
+        "7103706824|Sukhwinder Singh/sukhdev singh|Handa|9050905310|RTHODEK00150901|ODU|Yes\n" +
+        "7107383413|Surjit Singh/joginder singh|Moonak|8146033350|RTHODIKK0058735|ODU|yes";
+
     static final String PREFS = "customer_list", KEY = "data";
     static final int REQ_CALL = 101;
 
@@ -96,9 +113,9 @@ public class MainActivity extends Activity {
         fAll.setOnClickListener(v -> { filter = "all"; applyFilter(); });
         fYes.setOnClickListener(v -> { filter = "yes"; applyFilter(); });
         fNot.setOnClickListener(v -> { filter = "not"; applyFilter(); });
-        findViewById(R.id.btnImport).setOnClickListener(v -> showImportDialog());
+        findViewById(R.id.btnImport).setOnClickListener(v -> pickExcel());
         findViewById(R.id.btnNew).setOnClickListener(v -> showEdit(new Customer(), true));
-        findViewById(R.id.btnExport).setOnClickListener(v -> showExportDialog());
+        findViewById(R.id.btnExport).setOnClickListener(v -> exportExcel());
     }
 
     // ---------- सेव / लोड ----------
@@ -124,7 +141,7 @@ public class MainActivity extends Activity {
                     c.id = o.optString("id"); c.name = o.optString("name");
                     c.village = o.optString("village"); c.mobile = o.optString("mobile");
                     c.rsn = o.optString("rsn"); c.type = o.optString("type");
-                    c.status = o.optString("status");
+                    c.status = o.optString("status"); c.stb = o.optString("stb");
                     all.add(c);
                 }
             }
@@ -137,7 +154,7 @@ public class MainActivity extends Activity {
             JSONObject o = new JSONObject();
             o.put("id", c.id); o.put("name", c.name); o.put("village", c.village);
             o.put("mobile", c.mobile); o.put("rsn", c.rsn); o.put("type", c.type);
-            o.put("status", c.status);
+            o.put("status", c.status); o.put("stb", c.stb);
             arr.put(o);
         }
         return arr;
@@ -181,8 +198,8 @@ public class MainActivity extends Activity {
         for (Customer c : known) {
             if (!c.village.isEmpty() && c.village.toLowerCase(Locale.ROOT).equals(l)) return title(c.village);
         }
-        if (l.length() < 5) return null;
-        int lim = l.length() >= 7 ? 2 : 1;
+        if (l.length() < 6) return null;
+        int lim = l.length() >= 9 ? 2 : 1;
         for (Customer c : known) {
             String v = c.village.toLowerCase(Locale.ROOT);
             if (!v.isEmpty() && Math.abs(v.length() - l.length()) <= lim && lev(v, l) <= lim) return title(c.village);
@@ -272,79 +289,346 @@ public class MainActivity extends Activity {
         return false;
     }
 
-    // ---------- इम्पोर्ट ----------
-    void showImportDialog() {
-        final EditText et = new EditText(this);
-        et.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_MULTI_LINE);
-        et.setMinLines(6);
-        et.setGravity(Gravity.TOP);
-        et.setHint("कोई भी लिस्ट पेस्ट करें। ऐप खुद नाम, गाँव, मोबाइल, वर्क ऑर्डर, RSN पहचान लेगा।");
+    // ---------- Excel इम्पोर्ट ----------
+    static final int REQ_FILE = 202;
+    ArrayList<Customer> pendingRows = new ArrayList<>();
+
+    interface RowSink { boolean row(ArrayList<String> cells) throws Exception; }
+
+    void pickExcel() {
+        Intent i = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+        i.addCategory(Intent.CATEGORY_OPENABLE);
+        i.setType("*/*");
+        i.putExtra(Intent.EXTRA_MIME_TYPES, new String[]{
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "application/octet-stream"});
+        startActivityForResult(i, REQ_FILE);
+    }
+
+    @Override
+    protected void onActivityResult(int req, int res, Intent data) {
+        super.onActivityResult(req, res, data);
+        if (req == REQ_FILE && res == RESULT_OK && data != null && data.getData() != null) readExcel(data.getData());
+    }
+
+    void readExcel(final Uri uri) {
+        Toast.makeText(this, "Excel फ़ाइल पढ़ रहे हैं…", Toast.LENGTH_SHORT).show();
+        new Thread(() -> {
+            try {
+                File tmp = new File(getCacheDir(), "import.xlsx");
+                InputStream in = getContentResolver().openInputStream(uri);
+                FileOutputStream out = new FileOutputStream(tmp);
+                byte[] buf = new byte[65536];
+                int n;
+                while ((n = in.read(buf)) > 0) out.write(buf, 0, n);
+                out.close();
+                in.close();
+                final ArrayList<Customer> rows = parseExcel(tmp);
+                tmp.delete();
+                runOnUiThread(() -> askImport(rows));
+            } catch (final Exception e) {
+                runOnUiThread(() -> new AlertDialog.Builder(this)
+                        .setTitle("फ़ाइल नहीं पढ़ी जा सकी")
+                        .setMessage("सिर्फ़ .xlsx फ़ाइल चलेगी। पुरानी .xls हो तो Excel में Save As करके .xlsx बना लें।\n\n" + e)
+                        .setPositiveButton("ठीक है", null).show());
+            }
+        }).start();
+    }
+
+    void askImport(ArrayList<Customer> rows) {
+        if (rows.isEmpty()) {
+            Toast.makeText(this, "फ़ाइल में कोई ग्राहक नहीं मिला", Toast.LENGTH_LONG).show();
+            return;
+        }
+        pendingRows = rows;
         new AlertDialog.Builder(this)
-                .setTitle("डेटा इम्पोर्ट")
-                .setView(et)
-                .setPositiveButton("जोड़ें", (d, w) -> doImport(et.getText().toString(), false))
-                .setNeutralButton("बदलें", (d, w) -> doImport(et.getText().toString(), true))
+                .setTitle("Excel से " + rows.size() + " ग्राहक मिले")
+                .setMessage("नाम, गाँव, मोबाइल, वर्क ऑर्डर और RSN अपने आप पहचान लिए गए हैं।")
+                .setPositiveButton("लिस्ट में जोड़ें", (d, w) -> applyImport(false))
+                .setNeutralButton("पुरानी हटाकर बदलें", (d, w) -> applyImport(true))
                 .setNegativeButton("रद्द", null)
                 .show();
     }
 
-    void doImport(String text, boolean replace) {
-        ArrayList<Customer> known = new ArrayList<>(all);
-        ArrayList<Customer> rows = new ArrayList<>();
-        for (String line : text.split("\\r?\\n")) {
-            if (line.trim().isEmpty()) continue;
-            Customer c = smartParse(line, known);
-            if (c == null) continue;
-            rows.add(c);
-            known.add(c);
+    Customer findDup(Customer n) {
+        for (Customer c : all) {
+            if (!n.id.isEmpty() && n.id.equals(c.id)) return c;
+            if (!n.rsn.isEmpty() && n.rsn.equals(c.rsn)) return c;
         }
-        if (rows.isEmpty()) {
-            Toast.makeText(this, "कोई सही लाइन नहीं मिली", Toast.LENGTH_LONG).show();
-            return;
-        }
+        return null;
+    }
+
+    void applyImport(boolean replace) {
         if (replace) all.clear();
-        int added = 0, skipped = 0;
-        for (Customer c : rows) {
-            if (isDup(c)) { skipped++; continue; }
-            all.add(c);
-            added++;
+        int added = 0, updated = 0;
+        for (Customer n : pendingRows) {
+            Customer ex = findDup(n);
+            if (ex == null) { all.add(n); added++; continue; }
+            boolean ch = false;
+            if (ex.status.isEmpty() && !n.status.isEmpty()) { ex.status = n.status; ch = true; }
+            if (ex.village.isEmpty() && !n.village.isEmpty()) { ex.village = n.village; ch = true; }
+            if (ex.mobile.isEmpty() && !n.mobile.isEmpty()) { ex.mobile = n.mobile; ch = true; }
+            if (ex.type.isEmpty() && !n.type.isEmpty()) { ex.type = n.type; ch = true; }
+            if (ex.stb.isEmpty() && !n.stb.isEmpty()) { ex.stb = n.stb; ch = true; }
+            if (ch) updated++;
         }
+        pendingRows = new ArrayList<>();
         saveData();
         applyFilter();
-        Toast.makeText(this, added + " नए जुड़े, " + skipped + " पहले से थे", Toast.LENGTH_LONG).show();
+        Toast.makeText(this, added + " नए जुड़े, " + updated + " अपडेट हुए", Toast.LENGTH_LONG).show();
+    }
+
+    ArrayList<Customer> parseExcel(File f) throws Exception {
+        final ArrayList<Customer> out = new ArrayList<>();
+        final ArrayList<Customer> known = new ArrayList<>(all);
+        final int[][] map = {null};
+        final boolean[] first = {true};
+        ZipFile zf = new ZipFile(f);
+        try {
+            ArrayList<String> shared = readShared(zf);
+            for (String[] sh : readSheetList(zf)) {
+                final String sheetName = sh[0];
+                map[0] = null;
+                first[0] = true;
+                readSheet(zf, sh[1], shared, cells -> {
+                    if (first[0]) {
+                        first[0] = false;
+                        int[] m = headerMap(cells);
+                        if (m != null) { map[0] = m; return true; }
+                        map[0] = defaultMap(cells);
+                    }
+                    Customer c = rowToCustomer(sheetName, cells, map[0], known);
+                    if (c != null) { out.add(c); known.add(c); }
+                    return out.size() < 50000;
+                });
+            }
+        } finally {
+            zf.close();
+        }
+        return out;
+    }
+
+    static String clean(String s) {
+        if (s == null) return "";
+        s = s.replace('\u00a0', ' ').trim();
+        return s.equals("#N/A") ? "" : s;
+    }
+
+    static String get(ArrayList<String> cells, int i) {
+        return (i < 0 || i >= cells.size()) ? "" : clean(cells.get(i));
+    }
+
+    // पहली लाइन हेडर हो तो कॉलम पहचानो (Order ID, Name, Address, Mobile no, Serial no ...)
+    int[] headerMap(ArrayList<String> cells) {
+        int[] m = {-1, -1, -1, -1, -1, -1, -1, -1};
+        for (int i = 0; i < cells.size(); i++) {
+            String h = clean(cells.get(i)).toLowerCase(Locale.ROOT);
+            if (h.isEmpty()) continue;
+            int k = -1;
+            if (h.contains("order id") || h.contains("work order") || h.equals("wo") || h.equals("order")) k = 0;
+            else if (h.equals("name") || h.contains("customer")) k = 1;
+            else if (h.contains("address") || h.contains("village") || h.contains("location") || h.contains("गाँव")) k = 2;
+            else if (h.contains("mobile") || h.contains("phone") || h.contains("contact")) k = 3;
+            else if (h.contains("stb")) k = 7;
+            else if (h.contains("serial") || h.equals("rsn")) k = 4;
+            else if (h.equals("type")) k = 5;
+            else if (h.contains("remark") || h.contains("status")) k = 6;
+            if (k >= 0 && m[k] < 0) m[k] = i;
+        }
+        return (m[1] >= 0 && m[3] >= 0) ? m : null;
+    }
+
+    // हेडर न हो तो: वर्क ऑर्डर, नाम, गाँव, मोबाइल, RSN, प्रकार, रिमार्क
+    int[] defaultMap(ArrayList<String> cells) {
+        if (cells.size() >= 5 && get(cells, 0).replaceAll("\\D", "").matches("\\d{9,10}"))
+            return new int[]{0, 1, 2, 3, 4, 5, 6, -1};
+        return null;
+    }
+
+    Customer rowToCustomer(String sheet, ArrayList<String> cells, int[] m, List<Customer> known) {
+        Customer c;
+        if (m == null) {
+            StringBuilder sb = new StringBuilder();
+            for (String s : cells) sb.append(clean(s)).append('\t');
+            c = smartParse(sb.toString(), known);
+            if (c == null) return null;
+        } else {
+            c = new Customer();
+            c.id = get(cells, m[0]).replaceAll("\\D", "");
+            c.name = title(get(cells, m[1]));
+            String v = get(cells, m[2]);
+            if (!v.isEmpty()) {
+                String cv = canonVillage(v, known);
+                c.village = cv != null ? cv : title(v);
+            }
+            String mob = get(cells, m[3]).replaceAll("\\D", "");
+            c.mobile = mob.length() > 10 ? mob.substring(mob.length() - 10) : mob;
+            c.rsn = get(cells, m[4]).replace(" ", "").toUpperCase(Locale.ROOT);
+            c.type = get(cells, m[5]).toUpperCase(Locale.ROOT);
+            c.stb = get(cells, m[7]).replace(" ", "").toUpperCase(Locale.ROOT);
+            String st = get(cells, m[6]);
+            String sl = st.toLowerCase(Locale.ROOT);
+            c.status = (sl.equals("yes") || sl.equals("y")) ? "Yes" : sl.equals("not") ? "not" : st;
+        }
+        if (c.type.isEmpty()) {
+            String sn = sheet.toLowerCase(Locale.ROOT);
+            if (sn.contains("idu")) c.type = "IDU";
+            else if (sn.contains("odu")) c.type = "ODU";
+        }
+        if (c.name.equalsIgnoreCase("name")) return null;
+        if (c.name.isEmpty() && c.mobile.isEmpty() && c.id.isEmpty() && c.rsn.isEmpty()) return null;
+        return c;
+    }
+
+    // ---------- xlsx पढ़ने के औज़ार (बिना किसी लाइब्रेरी के) ----------
+    static int colIndex(String ref) {
+        int idx = 0;
+        for (int i = 0; i < ref.length(); i++) {
+            char ch = ref.charAt(i);
+            if (!Character.isLetter(ch)) break;
+            idx = idx * 26 + (Character.toUpperCase(ch) - 'A' + 1);
+        }
+        return idx - 1;
+    }
+
+    static String normNum(String v) {
+        v = v.trim();
+        if (v.matches("-?\\d+(\\.\\d+)?[eE][+-]?\\d+")) {
+            try { return new BigDecimal(v).toPlainString(); } catch (Exception e) { }
+        }
+        if (v.matches("\\d+\\.0+")) return v.substring(0, v.indexOf('.'));
+        return v;
+    }
+
+    ArrayList<String> readShared(ZipFile zf) throws Exception {
+        ArrayList<String> out = new ArrayList<>();
+        ZipEntry ze = zf.getEntry("xl/sharedStrings.xml");
+        if (ze == null) return out;
+        XmlPullParser p = Xml.newPullParser();
+        p.setInput(zf.getInputStream(ze), null);
+        StringBuilder sb = null;
+        boolean inRph = false;
+        int ev = p.getEventType();
+        while (ev != XmlPullParser.END_DOCUMENT) {
+            if (ev == XmlPullParser.START_TAG) {
+                String n = p.getName();
+                if (n.equals("si")) sb = new StringBuilder();
+                else if (n.equals("rPh")) inRph = true;
+                else if (n.equals("t") && sb != null && !inRph) sb.append(p.nextText());
+            } else if (ev == XmlPullParser.END_TAG) {
+                String n = p.getName();
+                if (n.equals("rPh")) inRph = false;
+                else if (n.equals("si")) { out.add(sb == null ? "" : sb.toString()); sb = null; }
+            }
+            ev = p.next();
+        }
+        return out;
+    }
+
+    ArrayList<String[]> readSheetList(ZipFile zf) throws Exception {
+        java.util.HashMap<String, String> rel = new java.util.HashMap<>();
+        XmlPullParser p = Xml.newPullParser();
+        p.setInput(zf.getInputStream(zf.getEntry("xl/_rels/workbook.xml.rels")), null);
+        for (int ev = p.getEventType(); ev != XmlPullParser.END_DOCUMENT; ev = p.next()) {
+            if (ev == XmlPullParser.START_TAG && p.getName().equals("Relationship"))
+                rel.put(p.getAttributeValue(null, "Id"), p.getAttributeValue(null, "Target"));
+        }
+        ArrayList<String[]> out = new ArrayList<>();
+        XmlPullParser q = Xml.newPullParser();
+        q.setInput(zf.getInputStream(zf.getEntry("xl/workbook.xml")), null);
+        for (int ev = q.getEventType(); ev != XmlPullParser.END_DOCUMENT; ev = q.next()) {
+            if (ev == XmlPullParser.START_TAG && q.getName().equals("sheet")) {
+                String name = q.getAttributeValue(null, "name");
+                String rid = null;
+                for (int i = 0; i < q.getAttributeCount(); i++) {
+                    String an = q.getAttributeName(i);
+                    if (an.equals("r:id") || an.equals("id")) rid = q.getAttributeValue(i);
+                }
+                String target = rid == null ? null : rel.get(rid);
+                if (target == null) continue;
+                out.add(new String[]{name == null ? "" : name, target.startsWith("/") ? target.substring(1) : "xl/" + target});
+            }
+        }
+        return out;
+    }
+
+    static String readInline(XmlPullParser p) throws Exception {
+        StringBuilder sb = new StringBuilder();
+        int ev = p.next();
+        while (!(ev == XmlPullParser.END_TAG && p.getName().equals("is"))) {
+            if (ev == XmlPullParser.START_TAG && p.getName().equals("t")) sb.append(p.nextText());
+            ev = p.next();
+        }
+        return sb.toString();
+    }
+
+    // शीट को लाइन-दर-लाइन पढ़ता है। लगातार 200 खाली लाइनें आएँ तो रुक जाता है
+    // (बड़ी फ़ाइलों में लाखों खाली लाइनें होती हैं)
+    void readSheet(ZipFile zf, String path, ArrayList<String> shared, RowSink sink) throws Exception {
+        ZipEntry ze = zf.getEntry(path);
+        if (ze == null) return;
+        XmlPullParser p = Xml.newPullParser();
+        p.setInput(zf.getInputStream(ze), null);
+        ArrayList<String> row = new ArrayList<>();
+        int col = -1, blankStreak = 0;
+        String t = null, val = "";
+        int ev = p.getEventType();
+        while (ev != XmlPullParser.END_DOCUMENT) {
+            if (ev == XmlPullParser.START_TAG) {
+                String n = p.getName();
+                if (n.equals("row")) { row = new ArrayList<>(); col = -1; }
+                else if (n.equals("c")) {
+                    String ref = p.getAttributeValue(null, "r");
+                    col = ref != null ? colIndex(ref) : col + 1;
+                    t = p.getAttributeValue(null, "t");
+                    val = "";
+                } else if (n.equals("v")) val = p.nextText();
+                else if (n.equals("is")) val = readInline(p);
+            } else if (ev == XmlPullParser.END_TAG) {
+                String n = p.getName();
+                if (n.equals("c")) {
+                    String v = val;
+                    if ("s".equals(t)) {
+                        try {
+                            int i = Integer.parseInt(v.trim());
+                            v = i < shared.size() ? shared.get(i) : "";
+                        } catch (Exception e) { v = ""; }
+                    } else if (t == null || "n".equals(t)) v = normNum(v);
+                    while (row.size() <= col) row.add("");
+                    if (col >= 0) row.set(col, v);
+                } else if (n.equals("row")) {
+                    boolean blank = true;
+                    for (String s : row) if (!s.trim().isEmpty()) { blank = false; break; }
+                    if (blank) { if (++blankStreak >= 200) return; }
+                    else { blankStreak = 0; if (!sink.row(row)) return; }
+                }
+            }
+            ev = p.next();
+        }
     }
 
     // ---------- देखें / बदलें ----------
-    EditText addField(LinearLayout box, String label, String value, int inputType) {
-        TextView tv = new TextView(this);
-        tv.setText(label);
-        tv.setTextColor(Color.parseColor("#667085"));
-        tv.setTextSize(12);
-        box.addView(tv);
-        EditText et = new EditText(this);
-        et.setText(value);
-        et.setInputType(inputType);
-        box.addView(et);
-        return et;
-    }
-
     void showEdit(final Customer c, final boolean isNew) {
-        LinearLayout box = new LinearLayout(this);
-        box.setOrientation(LinearLayout.VERTICAL);
-        box.setPadding(40, 20, 40, 0);
-        final EditText eName = addField(box, "ग्राहक का नाम", c.name, InputType.TYPE_CLASS_TEXT);
-        final EditText eLoc = addField(box, "लोकेशन / गाँव", c.village, InputType.TYPE_CLASS_TEXT);
-        final EditText eMob = addField(box, "मोबाइल नंबर", c.mobile, InputType.TYPE_CLASS_PHONE);
-        final EditText eWo = addField(box, "वर्क ऑर्डर नंबर", c.id, InputType.TYPE_CLASS_NUMBER);
-        final EditText eRsn = addField(box, "RSN", c.rsn, InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_CAP_CHARACTERS);
-        final EditText eType = addField(box, "प्रकार (ODU / IDU / STB)", c.type, InputType.TYPE_CLASS_TEXT);
-        final EditText eSt = addField(box, "स्थिति (Yes / not)", c.status, InputType.TYPE_CLASS_TEXT);
-        ScrollView sv = new ScrollView(this);
-        sv.addView(box);
+        View box = LayoutInflater.from(this).inflate(R.layout.dialog_edit, null);
+        final EditText eName = box.findViewById(R.id.eName);
+        final EditText eLoc = box.findViewById(R.id.eLoc);
+        final EditText eMob = box.findViewById(R.id.eMob);
+        final EditText eWo = box.findViewById(R.id.eWo);
+        final EditText eRsn = box.findViewById(R.id.eRsn);
+        final EditText eType = box.findViewById(R.id.eType);
+        final EditText eSt = box.findViewById(R.id.eSt);
+        final EditText eStb = box.findViewById(R.id.eStb);
+        eName.setText(c.name);
+        eLoc.setText(c.village);
+        eMob.setText(c.mobile);
+        eWo.setText(c.id);
+        eRsn.setText(c.rsn);
+        eType.setText(c.type);
+        eSt.setText(c.status);
+        eStb.setText(c.stb);
 
         AlertDialog.Builder b = new AlertDialog.Builder(this)
                 .setTitle(isNew ? "नया ग्राहक" : "देखें / बदलें")
-                .setView(sv)
+                .setView(box)
                 .setPositiveButton("सेव", (d, w) -> {
                     c.name = eName.getText().toString().trim();
                     c.village = eLoc.getText().toString().trim();
@@ -353,6 +637,7 @@ public class MainActivity extends Activity {
                     c.rsn = eRsn.getText().toString().trim().toUpperCase(Locale.ROOT);
                     c.type = eType.getText().toString().trim().toUpperCase(Locale.ROOT);
                     c.status = eSt.getText().toString().trim();
+                    c.stb = eStb.getText().toString().trim().toUpperCase(Locale.ROOT);
                     if (isNew) all.add(0, c);
                     saveData();
                     applyFilter();
@@ -369,24 +654,11 @@ public class MainActivity extends Activity {
     }
 
     // ---------- एक्सपोर्ट ----------
-    void showExportDialog() {
-        new AlertDialog.Builder(this)
-                .setTitle("कौन सी फ़ाइल बनानी है?")
-                .setItems(new String[]{"📄 HTML फ़ाइल (सर्च + कॉल बटन)", "📊 Excel फ़ाइल (.xlsx)"},
-                        (d, w) -> doExport(w == 0))
-                .show();
-    }
-
-    void doExport(boolean html) {
+    void exportExcel() {
         try {
             String stamp = new SimpleDateFormat("yyyyMMdd_HHmm", Locale.US).format(new Date());
-            String path;
-            if (html) {
-                path = saveFile("customer_list_" + stamp + ".html", "text/html", buildHtml().getBytes("UTF-8"));
-            } else {
-                path = saveFile("customer_list_" + stamp + ".xlsx",
-                        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", buildXlsx());
-            }
+            String path = saveFile("customer_list_" + stamp + ".xlsx",
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", buildXlsx());
             new AlertDialog.Builder(this).setTitle("फ़ाइल बन गई ✅").setMessage(path)
                     .setPositiveButton("ठीक है", null).show();
         } catch (Exception e) {
@@ -412,28 +684,6 @@ public class MainActivity extends Activity {
             o.close();
             return f.getAbsolutePath();
         }
-    }
-
-    String buildHtml() throws Exception {
-        String json = toJson().toString().replace("<", "\\u003c");
-        return "<!DOCTYPE html><html lang='hi'><head><meta charset='utf-8'>"
-            + "<meta name='viewport' content='width=device-width,initial-scale=1'><title>ग्राहक लिस्ट</title>"
-            + "<style>body{margin:0;background:#f4f6fa;font-family:sans-serif;padding:10px}"
-            + "#q{width:100%;box-sizing:border-box;padding:12px;font-size:16px;border:1px solid #ccc;border-radius:8px;position:sticky;top:0}"
-            + ".i{display:flex;justify-content:space-between;align-items:center;background:#fff;border-radius:10px;padding:10px;margin-top:8px}"
-            + ".i a{background:#0f9d58;color:#fff;padding:12px 14px;border-radius:8px;text-decoration:none;font-weight:bold}"
-            + "small{color:#667085}</style></head><body><h3>📋 ग्राहक लिस्ट</h3>"
-            + "<input id='q' type='search' placeholder='खोजें…'><div id='l'></div><script>"
-            + "const D=" + json + ";"
-            + "const q=document.getElementById('q'),l=document.getElementById('l');"
-            + "function e(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;')}"
-            + "function r(){const k=q.value.toLowerCase();"
-            + "const x=D.filter(o=>!k||Object.values(o).join(' ').toLowerCase().includes(k));"
-            + "l.innerHTML=x.map(o=>`<div class='i'><div><b>${e(o.name)}</b> <small>[${e(o.status)}]</small><br>"
-            + "<small>📍 ${e(o.village)} · 📱 ${e(o.mobile)}<br>${e(o.type)} · ${e(o.rsn)} · ${e(o.id)}</small></div>"
-            + "<a href='tel:+91${String(o.mobile).replace(/\\D/g,'').slice(-10)}'>📞 कॉल</a></div>`).join('')"
-            + "||'<p>कोई रिकॉर्ड नहीं</p>';}"
-            + "q.oninput=r;r();</script></body></html>";
     }
 
     static String x(String s) {
@@ -472,11 +722,11 @@ public class MainActivity extends Activity {
 
         StringBuilder sb = new StringBuilder(xml);
         sb.append("<worksheet xmlns=\"http://schemas.openxmlformats.org/spreadsheetml/2006/main\"><sheetData>");
-        String[] head = {"क्रम", "वर्क ऑर्डर", "नाम", "लोकेशन", "मोबाइल", "RSN", "प्रकार", "स्थिति"};
+        String[] head = {"क्रम", "वर्क ऑर्डर", "नाम", "लोकेशन", "मोबाइल", "RSN", "प्रकार", "रिमार्क", "STB"};
         addRow(sb, 1, head);
         int r = 2;
         for (Customer c : all) {
-            addRow(sb, r, new String[]{String.valueOf(r - 1), c.id, c.name, c.village, c.mobile, c.rsn, c.type, c.status});
+            addRow(sb, r, new String[]{String.valueOf(r - 1), c.id, c.name, c.village, c.mobile, c.rsn, c.type, c.status, c.stb});
             r++;
         }
         sb.append("</sheetData></worksheet>");
@@ -547,10 +797,10 @@ public class MainActivity extends Activity {
             if (v == null) v = LayoutInflater.from(MainActivity.this).inflate(R.layout.item_customer, parent, false);
             final Customer c = shown.get(i);
             TextView nm = v.findViewById(R.id.tvName);
-            nm.setText(c.name + "  [" + c.status + "]");
-            nm.setTextColor(c.isYes() ? Color.parseColor("#1B2330") : Color.parseColor("#D93025"));
+            nm.setText(c.name + (c.status.isEmpty() ? "" : "  [" + c.status + "]"));
+            nm.setTextColor(c.status.isEmpty() || c.isYes() ? Color.parseColor("#FFFFFF") : Color.parseColor("#FF6B60"));
             ((TextView) v.findViewById(R.id.tvSub1)).setText("📍 " + c.village + "  ·  📱 " + c.mobile);
-            ((TextView) v.findViewById(R.id.tvSub2)).setText(c.type + " · RSN: " + c.rsn + " · WO: " + c.id);
+            ((TextView) v.findViewById(R.id.tvSub2)).setText(c.type + " · RSN: " + c.rsn + " · WO: " + c.id + (c.stb.isEmpty() ? "" : " · STB: " + c.stb));
             v.findViewById(R.id.btnCall).setOnClickListener(x -> callNumber(c.mobile));
             return v;
         }

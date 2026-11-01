@@ -1,40 +1,80 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent" android:layout_height="match_parent"
-    android:orientation="vertical" android:padding="10dp" android:background="#F4F6FA">
+    android:orientation="vertical" android:background="#111115">
 
-    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-        android:text="📋 ग्राहक लिस्ट" android:textSize="20sp" android:textStyle="bold"
-        android:textColor="#1B2330" android:layout_marginBottom="8dp" />
-
-    <EditText android:id="@+id/search" android:layout_width="match_parent"
-        android:layout_height="wrap_content" android:hint="नाम, गाँव, मोबाइल, RSN, वर्क ऑर्डर से खोजें…"
-        android:inputType="text" android:background="#FFFFFF" android:padding="12dp" />
-
+    <!-- ऊपर की पट्टी: स्टेटस बार के ठीक नीचे -->
     <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
-        android:orientation="horizontal" android:layout_marginTop="6dp">
-        <Button android:id="@+id/fAll" android:layout_width="0dp" android:layout_weight="1"
-            android:layout_height="wrap_content" android:text="सभी" />
-        <Button android:id="@+id/fYes" android:layout_width="0dp" android:layout_weight="1"
-            android:layout_height="wrap_content" android:text="Yes" />
-        <Button android:id="@+id/fNot" android:layout_width="0dp" android:layout_weight="1"
-            android:layout_height="wrap_content" android:text="Not" />
+        android:orientation="vertical" android:background="#111115"
+        android:paddingLeft="14dp" android:paddingRight="14dp"
+        android:paddingTop="12dp" android:paddingBottom="12dp">
+
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:orientation="horizontal" android:gravity="center_vertical">
+            <ImageView android:layout_width="68dp" android:layout_height="68dp"
+                android:src="@drawable/profile_photo" android:scaleType="centerCrop" />
+            <LinearLayout android:layout_width="0dp" android:layout_weight="1"
+                android:layout_height="wrap_content" android:orientation="vertical"
+                android:layout_marginLeft="14dp">
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                    android:text="Mannat Communication" android:textSize="21sp"
+                    android:textStyle="bold" android:textColor="#6B5CE7" />
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                    android:text="Jio AirFiber Customer Records" android:textSize="13sp"
+                    android:textColor="#B8B8C0" android:layout_marginTop="2dp" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:orientation="horizontal" android:gravity="center_vertical"
+            android:layout_marginTop="10dp">
+            <TextView android:layout_width="0dp" android:layout_weight="1"
+                android:layout_height="wrap_content" android:text="Tarsem ji"
+                android:textSize="16sp" android:textColor="#FFFFFF" />
+            <ImageView android:layout_width="30dp" android:layout_height="30dp"
+                android:src="@drawable/jio_logo" />
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:text="M: 9988863580" android:textSize="16sp"
+                android:textColor="#FFFFFF" android:layout_marginLeft="8dp" />
+        </LinearLayout>
     </LinearLayout>
 
-    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
-        android:orientation="horizontal">
-        <Button android:id="@+id/btnImport" android:layout_width="0dp" android:layout_weight="1"
-            android:layout_height="wrap_content" android:text="📥 इम्पोर्ट" />
-        <Button android:id="@+id/btnNew" android:layout_width="0dp" android:layout_weight="1"
-            android:layout_height="wrap_content" android:text="➕ नया" />
-        <Button android:id="@+id/btnExport" android:layout_width="0dp" android:layout_weight="1"
-            android:layout_height="wrap_content" android:text="📤 एक्सपोर्ट" />
+    <View android:layout_width="match_parent" android:layout_height="1dp" android:background="#2A2A33" />
+
+    <!-- नीचे ऐप का असली काम -->
+    <LinearLayout android:layout_width="match_parent" android:layout_height="0dp"
+        android:layout_weight="1" android:orientation="vertical" android:padding="10dp">
+
+        <EditText android:id="@+id/search" android:layout_width="match_parent"
+            android:layout_height="wrap_content" android:hint="नाम, गाँव, मोबाइल, RSN, वर्क ऑर्डर से खोजें…"
+            android:inputType="text" android:background="#1E1E24" android:padding="12dp"
+            android:textColor="#FFFFFF" android:textColorHint="#8A8A94" />
+
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:orientation="horizontal" android:layout_marginTop="6dp">
+            <Button android:id="@+id/fAll" android:layout_width="0dp" android:layout_weight="1"
+                android:layout_height="wrap_content" android:text="सभी" />
+            <Button android:id="@+id/fYes" android:layout_width="0dp" android:layout_weight="1"
+                android:layout_height="wrap_content" android:text="Yes" />
+            <Button android:id="@+id/fNot" android:layout_width="0dp" android:layout_weight="1"
+                android:layout_height="wrap_content" android:text="Not" />
+        </LinearLayout>
+
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:orientation="horizontal">
+            <Button android:id="@+id/btnImport" android:layout_width="0dp" android:layout_weight="1.3"
+                android:layout_height="wrap_content" android:text="📥 Excel इम्पोर्ट" />
+            <Button android:id="@+id/btnNew" android:layout_width="0dp" android:layout_weight="1"
+                android:layout_height="wrap_content" android:text="➕ नया ग्राहक" />
+            <Button android:id="@+id/btnExport" android:layout_width="0dp" android:layout_weight="1"
+                android:layout_height="wrap_content" android:text="📤 Excel एक्सपोर्ट" />
+        </LinearLayout>
+
+        <TextView android:id="@+id/count" android:layout_width="wrap_content"
+            android:layout_height="wrap_content" android:textColor="#A0A0AA" android:layout_marginTop="4dp" />
+
+        <ListView android:id="@+id/list" android:layout_width="match_parent"
+            android:layout_height="0dp" android:layout_weight="1"
+            android:divider="@android:color/transparent" android:dividerHeight="8dp" />
     </LinearLayout>
-
-    <TextView android:id="@+id/count" android:layout_width="wrap_content"
-        android:layout_height="wrap_content" android:textColor="#667085" android:layout_marginTop="4dp" />
-
-    <ListView android:id="@+id/list" android:layout_width="match_parent"
-        android:layout_height="0dp" android:layout_weight="1"
-        android:divider="@android:color/transparent" android:dividerHeight="8dp" />
 </LinearLayout>
