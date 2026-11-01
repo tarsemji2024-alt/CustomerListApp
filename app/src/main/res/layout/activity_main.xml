@@ -74,6 +74,11 @@
         <TextView android:id="@+id/count" android:layout_width="wrap_content"
             android:layout_height="wrap_content" android:textColor="#A0A0AA" android:layout_marginTop="4dp" />
 
+        <TextView android:id="@+id/emptyView" android:layout_width="match_parent"
+            android:layout_height="0dp" android:layout_weight="1" android:gravity="center"
+            android:text="No customers yet\n\nTap 📥 Import or ➕ New Customer"
+            android:textColor="#8A8A94" android:textSize="15sp" />
+
         <ListView android:id="@+id/list" android:layout_width="match_parent"
             android:layout_height="0dp" android:layout_weight="1"
             android:divider="@android:color/transparent" android:dividerHeight="8dp" />
