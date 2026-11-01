@@ -11,8 +11,18 @@
             android:layout_height="wrap_content" android:inputType="textPersonName|textCapWords" />
 
         <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:text="पिता का नाम (Father name)" android:textSize="12sp" android:textColor="#A0A0AA" />
+        <EditText android:textColor="#FFFFFF" android:id="@+id/eFather" android:layout_width="match_parent"
+            android:layout_height="wrap_content" android:inputType="textPersonName|textCapWords" />
+
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
             android:text="लोकेशन / गाँव" android:textSize="12sp" android:textColor="#A0A0AA" />
         <EditText android:textColor="#FFFFFF" android:id="@+id/eLoc" android:layout_width="match_parent"
+            android:layout_height="wrap_content" android:inputType="text|textCapWords" />
+
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:text="नियर बाई (Near by)" android:textSize="12sp" android:textColor="#A0A0AA" />
+        <EditText android:textColor="#FFFFFF" android:id="@+id/eNear" android:layout_width="match_parent"
             android:layout_height="wrap_content" android:inputType="text|textCapWords" />
 
         <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
@@ -37,8 +47,16 @@
 
         <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
             android:text="रिमार्क / स्थिति" android:textSize="12sp" android:textColor="#A0A0AA" />
-        <EditText android:textColor="#FFFFFF" android:id="@+id/eSt" android:layout_width="match_parent"
-            android:layout_height="wrap_content" android:inputType="text" />
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:orientation="horizontal" android:gravity="center_vertical">
+            <EditText android:textColor="#FFFFFF" android:id="@+id/eSt" android:layout_width="0dp"
+                android:layout_weight="1" android:layout_height="wrap_content" android:inputType="text" />
+            <Button android:id="@+id/btnPreset" android:layout_width="wrap_content"
+                android:layout_height="40dp" android:minWidth="0dp" android:minHeight="0dp"
+                android:text="▼ Select" android:textAllCaps="false" android:textColor="#FFFFFF"
+                android:background="@drawable/glass_button" android:stateListAnimator="@null"
+                android:paddingLeft="12dp" android:paddingRight="12dp" />
+        </LinearLayout>
 
         <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
             android:text="STB सीरियल" android:textSize="12sp" android:textColor="#A0A0AA" />

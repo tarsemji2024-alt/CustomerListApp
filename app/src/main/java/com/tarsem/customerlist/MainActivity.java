@@ -53,10 +53,11 @@ import java.util.zip.ZipOutputStream;
 public class MainActivity extends Activity {
 
     static class Customer {
-        String id = "", name = "", village = "", mobile = "", rsn = "", type = "", status = "", stb = "";
-        boolean isYes() { String l = status.toLowerCase(Locale.ROOT); return l.startsWith("y") || l.equals("ok"); }
+        String id = "", name = "", village = "", mobile = "", rsn = "", type = "", status = "", stb = "", father = "", near = "";
+        boolean isYes() { String l = status.toLowerCase(Locale.ROOT); return l.startsWith("y") || l.equals("ok") || l.equals("returning") || l.equals("returned")
+                    || l.contains("दे रहा है") || l.contains("दे दिया"); }
         String all() {
-            return (id + " " + name + " " + village + " " + mobile + " " + rsn + " " + type + " " + status + " " + stb)
+            return (id + " " + name + " " + village + " " + mobile + " " + rsn + " " + type + " " + status + " " + stb + " " + father + " " + near)
                     .toLowerCase(Locale.ROOT);
         }
     }
@@ -81,12 +82,10 @@ public class MainActivity extends Activity {
 
     ArrayList<Customer> all = new ArrayList<>();
     ArrayList<Customer> shown = new ArrayList<>();
-    String filter = "all";
     String pendingNumber = null;
     Adapter adapter;
     EditText search;
     TextView count;
-    Button fAll, fYes, fNot;
 
     @Override
     protected void onCreate(Bundle b) {
@@ -94,9 +93,6 @@ public class MainActivity extends Activity {
         setContentView(R.layout.activity_main);
         search = findViewById(R.id.search);
         count = findViewById(R.id.count);
-        fAll = findViewById(R.id.fAll);
-        fYes = findViewById(R.id.fYes);
-        fNot = findViewById(R.id.fNot);
         ListView list = findViewById(R.id.list);
         adapter = new Adapter();
         list.setAdapter(adapter);
@@ -110,12 +106,9 @@ public class MainActivity extends Activity {
             public void onTextChanged(CharSequence s, int a, int c, int d) { applyFilter(); }
             public void afterTextChanged(Editable s) {}
         });
-        fAll.setOnClickListener(v -> { filter = "all"; applyFilter(); });
-        fYes.setOnClickListener(v -> { filter = "yes"; applyFilter(); });
-        fNot.setOnClickListener(v -> { filter = "not"; applyFilter(); });
         findViewById(R.id.btnImport).setOnClickListener(v -> pickExcel());
         findViewById(R.id.btnNew).setOnClickListener(v -> showEdit(new Customer(), true));
-        findViewById(R.id.btnExport).setOnClickListener(v -> exportExcel());
+        findViewById(R.id.btnExport).setOnClickListener(v -> showExportDialog());
     }
 
     // ---------- सेव / लोड ----------
@@ -141,7 +134,7 @@ public class MainActivity extends Activity {
                     c.id = o.optString("id"); c.name = o.optString("name");
                     c.village = o.optString("village"); c.mobile = o.optString("mobile");
                     c.rsn = o.optString("rsn"); c.type = o.optString("type");
-                    c.status = o.optString("status"); c.stb = o.optString("stb");
+                    c.status = o.optString("status"); c.stb = o.optString("stb"); c.father = o.optString("father"); c.near = o.optString("near");
                     all.add(c);
                 }
             }
@@ -154,7 +147,7 @@ public class MainActivity extends Activity {
             JSONObject o = new JSONObject();
             o.put("id", c.id); o.put("name", c.name); o.put("village", c.village);
             o.put("mobile", c.mobile); o.put("rsn", c.rsn); o.put("type", c.type);
-            o.put("status", c.status); o.put("stb", c.stb);
+            o.put("status", c.status); o.put("stb", c.stb); o.put("father", c.father); o.put("near", c.near);
             arr.put(o);
         }
         return arr;
@@ -307,6 +300,20 @@ public class MainActivity extends Activity {
     @Override
     protected void onActivityResult(int req, int res, Intent data) {
         super.onActivityResult(req, res, data);
+        if (req == REQ_SAVE) {
+            if (res == RESULT_OK && data != null && data.getData() != null && pendingExport != null) {
+                try {
+                    OutputStream o = getContentResolver().openOutputStream(data.getData());
+                    o.write(pendingExport);
+                    o.close();
+                    Toast.makeText(this, "Saved ✅", Toast.LENGTH_LONG).show();
+                } catch (Exception e) {
+                    Toast.makeText(this, "Could not save: " + e.getMessage(), Toast.LENGTH_LONG).show();
+                }
+            }
+            pendingExport = null;
+            return;
+        }
         if (req == REQ_FILE && res == RESULT_OK && data != null && data.getData() != null) readExcel(data.getData());
     }
 
@@ -329,7 +336,7 @@ public class MainActivity extends Activity {
                 runOnUiThread(() -> new AlertDialog.Builder(this)
                         .setTitle("फ़ाइल नहीं पढ़ी जा सकी")
                         .setMessage("सिर्फ़ .xlsx फ़ाइल चलेगी। पुरानी .xls हो तो Excel में Save As करके .xlsx बना लें।\n\n" + e)
-                        .setPositiveButton("ठीक है", null).show());
+                        .setPositiveButton("OK", null).show());
             }
         }).start();
     }
@@ -343,9 +350,9 @@ public class MainActivity extends Activity {
         new AlertDialog.Builder(this)
                 .setTitle("Excel से " + rows.size() + " ग्राहक मिले")
                 .setMessage("नाम, गाँव, मोबाइल, वर्क ऑर्डर और RSN अपने आप पहचान लिए गए हैं।")
-                .setPositiveButton("लिस्ट में जोड़ें", (d, w) -> applyImport(false))
-                .setNeutralButton("पुरानी हटाकर बदलें", (d, w) -> applyImport(true))
-                .setNegativeButton("रद्द", null)
+                .setPositiveButton("Add to list", (d, w) -> applyImport(false))
+                .setNeutralButton("Replace all", (d, w) -> applyImport(true))
+                .setNegativeButton("Cancel", null)
                 .show();
     }
 
@@ -617,6 +624,9 @@ public class MainActivity extends Activity {
         final EditText eType = box.findViewById(R.id.eType);
         final EditText eSt = box.findViewById(R.id.eSt);
         final EditText eStb = box.findViewById(R.id.eStb);
+        final EditText eFather = box.findViewById(R.id.eFather);
+        final EditText eNear = box.findViewById(R.id.eNear);
+        box.findViewById(R.id.btnPreset).setOnClickListener(x -> showPresets(eSt));
         eName.setText(c.name);
         eLoc.setText(c.village);
         eMob.setText(c.mobile);
@@ -625,11 +635,13 @@ public class MainActivity extends Activity {
         eType.setText(c.type);
         eSt.setText(c.status);
         eStb.setText(c.stb);
+        eFather.setText(c.father);
+        eNear.setText(c.near);
 
         AlertDialog.Builder b = new AlertDialog.Builder(this)
-                .setTitle(isNew ? "नया ग्राहक" : "देखें / बदलें")
+                .setTitle(isNew ? "New Customer" : "View / Edit")
                 .setView(box)
-                .setPositiveButton("सेव", (d, w) -> {
+                .setPositiveButton("Save", (d, w) -> {
                     c.name = eName.getText().toString().trim();
                     c.village = eLoc.getText().toString().trim();
                     c.mobile = eMob.getText().toString().trim();
@@ -638,52 +650,78 @@ public class MainActivity extends Activity {
                     c.type = eType.getText().toString().trim().toUpperCase(Locale.ROOT);
                     c.status = eSt.getText().toString().trim();
                     c.stb = eStb.getText().toString().trim().toUpperCase(Locale.ROOT);
+                    c.father = eFather.getText().toString().trim();
+                    c.near = eNear.getText().toString().trim();
                     if (isNew) all.add(0, c);
                     saveData();
                     applyFilter();
                 })
-                .setNegativeButton("रद्द", null);
+                .setNegativeButton("Cancel", null);
         if (!isNew) {
-            b.setNeutralButton("हटाएँ", (d, w) -> new AlertDialog.Builder(this)
-                    .setMessage(c.name + " को हटाएँ?")
-                    .setPositiveButton("हाँ, हटाएँ", (d2, w2) -> { all.remove(c); saveData(); applyFilter(); })
-                    .setNegativeButton("नहीं", null)
+            b.setNeutralButton("Delete", (d, w) -> new AlertDialog.Builder(this)
+                    .setMessage("Delete " + c.name + "?")
+                    .setPositiveButton("Yes, delete", (d2, w2) -> { all.remove(c); saveData(); applyFilter(); })
+                    .setNegativeButton("No", null)
                     .show());
         }
         b.show();
     }
 
+    static final String[] PRESETS = {
+        "दे रहा है (Returning)",
+        "नहीं दे रहा (Not returning)",
+        "दे दिया (Returned)",
+        "कॉल नहीं उठाई (Call not picked)",
+        "डिवाइस नहीं दे रहा – पेंडिंग (Device not returning pending)",
+        "डिवाइस नहीं दे रहा (Device not returning)"
+    };
+
+    void showPresets(final EditText target) {
+        new AlertDialog.Builder(this).setTitle("Select remark")
+                .setItems(PRESETS, (d, w) -> target.setText(PRESETS[w])).show();
+    }
+
     // ---------- एक्सपोर्ट ----------
-    void exportExcel() {
+    static final int REQ_SAVE = 303;
+    byte[] pendingExport = null;
+
+    void showExportDialog() {
+        new AlertDialog.Builder(this)
+                .setTitle("Export as")
+                .setItems(new String[]{"📊 Excel file (.xlsx)", "🌐 HTML page (search + call + edit)"},
+                        (d, w) -> startExport(w == 0))
+                .setNegativeButton("Cancel", null)
+                .show();
+    }
+
+    // फ़ाइल बनाकर Android का "कहाँ सेव करें" वाला पेज खोलता है
+    void startExport(boolean excel) {
         try {
             String stamp = new SimpleDateFormat("yyyyMMdd_HHmm", Locale.US).format(new Date());
-            String path = saveFile("customer_list_" + stamp + ".xlsx",
-                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", buildXlsx());
-            new AlertDialog.Builder(this).setTitle("फ़ाइल बन गई ✅").setMessage(path)
-                    .setPositiveButton("ठीक है", null).show();
+            String mime, name;
+            if (excel) {
+                pendingExport = buildXlsx();
+                mime = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+                name = "customer_list_" + stamp + ".xlsx";
+            } else {
+                pendingExport = buildHtml().getBytes("UTF-8");
+                mime = "text/html";
+                name = "customer_list_" + stamp + ".html";
+            }
+            Intent i = new Intent(Intent.ACTION_CREATE_DOCUMENT);
+            i.addCategory(Intent.CATEGORY_OPENABLE);
+            i.setType(mime);
+            i.putExtra(Intent.EXTRA_TITLE, name);
+            startActivityForResult(i, REQ_SAVE);
         } catch (Exception e) {
-            Toast.makeText(this, "एक्सपोर्ट नहीं हो पाया: " + e.getMessage(), Toast.LENGTH_LONG).show();
+            Toast.makeText(this, "Export failed: " + e.getMessage(), Toast.LENGTH_LONG).show();
         }
     }
 
-    String saveFile(String name, String mime, byte[] data) throws Exception {
-        if (Build.VERSION.SDK_INT >= 29) {
-            ContentValues v = new ContentValues();
-            v.put(MediaStore.Downloads.DISPLAY_NAME, name);
-            v.put(MediaStore.Downloads.MIME_TYPE, mime);
-            v.put(MediaStore.Downloads.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS);
-            Uri u = getContentResolver().insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, v);
-            OutputStream o = getContentResolver().openOutputStream(u);
-            o.write(data);
-            o.close();
-            return "Downloads फ़ोल्डर में: " + name;
-        } else {
-            File f = new File(getExternalFilesDir(null), name);
-            FileOutputStream o = new FileOutputStream(f);
-            o.write(data);
-            o.close();
-            return f.getAbsolutePath();
-        }
+    String buildHtml() throws Exception {
+        String json = toJson().toString().replace("<", "\\u003c");
+        return HtmlTemplate.HTML.replace("__DATA__", json)
+                .replace("__STAMP__", String.valueOf(System.currentTimeMillis()));
     }
 
     static String x(String s) {
@@ -722,11 +760,11 @@ public class MainActivity extends Activity {
 
         StringBuilder sb = new StringBuilder(xml);
         sb.append("<worksheet xmlns=\"http://schemas.openxmlformats.org/spreadsheetml/2006/main\"><sheetData>");
-        String[] head = {"क्रम", "वर्क ऑर्डर", "नाम", "लोकेशन", "मोबाइल", "RSN", "प्रकार", "रिमार्क", "STB"};
+        String[] head = {"क्रम", "वर्क ऑर्डर", "नाम", "लोकेशन", "मोबाइल", "RSN", "प्रकार", "रिमार्क", "STB", "पिता का नाम", "नियर बाई"};
         addRow(sb, 1, head);
         int r = 2;
         for (Customer c : all) {
-            addRow(sb, r, new String[]{String.valueOf(r - 1), c.id, c.name, c.village, c.mobile, c.rsn, c.type, c.status, c.stb});
+            addRow(sb, r, new String[]{String.valueOf(r - 1), c.id, c.name, c.village, c.mobile, c.rsn, c.type, c.status, c.stb, c.father, c.near});
             r++;
         }
         sb.append("</sheetData></worksheet>");
@@ -745,19 +783,18 @@ public class MainActivity extends Activity {
     }
 
     // ---------- सर्च / फ़िल्टर ----------
+    // सर्च: लिखे हुए सभी शब्द मिलने चाहिए (जैसे "moonak not returning")
     void applyFilter() {
         String q = search.getText().toString().trim().toLowerCase(Locale.ROOT);
+        String[] words = q.isEmpty() ? new String[0] : q.split("\\s+");
         shown.clear();
         for (Customer c : all) {
-            if (filter.equals("yes") && !c.isYes()) continue;
-            if (filter.equals("not") && c.isYes()) continue;
-            if (!q.isEmpty() && !c.all().contains(q)) continue;
-            shown.add(c);
+            String hay = c.all();
+            boolean ok = true;
+            for (String w : words) { if (!hay.contains(w)) { ok = false; break; } }
+            if (ok) shown.add(c);
         }
         count.setText(shown.size() + " / " + all.size());
-        fAll.setAlpha(filter.equals("all") ? 1f : 0.5f);
-        fYes.setAlpha(filter.equals("yes") ? 1f : 0.5f);
-        fNot.setAlpha(filter.equals("not") ? 1f : 0.5f);
         adapter.notifyDataSetChanged();
     }
 
@@ -800,6 +837,12 @@ public class MainActivity extends Activity {
             nm.setText(c.name + (c.status.isEmpty() ? "" : "  [" + c.status + "]"));
             nm.setTextColor(c.status.isEmpty() || c.isYes() ? Color.parseColor("#FFFFFF") : Color.parseColor("#FF6B60"));
             ((TextView) v.findViewById(R.id.tvSub1)).setText("📍 " + c.village + "  ·  📱 " + c.mobile);
+            TextView tf = v.findViewById(R.id.tvFather);
+            tf.setVisibility(c.father.isEmpty() ? View.GONE : View.VISIBLE);
+            tf.setText("👤 पिता: " + c.father);
+            TextView tn = v.findViewById(R.id.tvNear);
+            tn.setVisibility(c.near.isEmpty() ? View.GONE : View.VISIBLE);
+            tn.setText("🏠 नियर बाई: " + c.near);
             ((TextView) v.findViewById(R.id.tvSub2)).setText(c.type + " · RSN: " + c.rsn + " · WO: " + c.id + (c.stb.isEmpty() ? "" : " · STB: " + c.stb));
             v.findViewById(R.id.btnCall).setOnClickListener(x -> callNumber(c.mobile));
             return v;
