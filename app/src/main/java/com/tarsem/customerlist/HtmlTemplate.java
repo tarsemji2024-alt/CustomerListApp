@@ -4,7 +4,7 @@ package com.tarsem.customerlist;
 final class HtmlTemplate {
     static final String HTML =
         "<!DOCTYPE html>\n" +
-        "<html lang=\"hi\">\n" +
+        "<html lang=\"en\">\n" +
         "<head>\n" +
         "<meta charset=\"utf-8\">\n" +
         "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n" +
@@ -27,7 +27,6 @@ final class HtmlTemplate {
         ".nm{font-weight:600;font-size:16px}\n" +
         ".sub{color:var(--mu);font-size:13px;margin-top:2px;word-break:break-all}\n" +
         ".tag{display:inline-block;font-size:12px;padding:1px 7px;border-radius:99px;border:1px solid currentColor;margin-left:6px}\n" +
-        ".yes{color:var(--ok)}.not{color:var(--no)}\n" +
         ".call{background:linear-gradient(180deg,#34d27b,#128a47);color:#fff;padding:13px 18px;font-weight:600;border-radius:16px;text-decoration:none;white-space:nowrap;border:1px solid rgba(255,255,255,.3)}\n" +
         ".empty{text-align:center;color:var(--mu);padding:30px}\n" +
         ".modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);align-items:center;justify-content:center;padding:12px;z-index:20}\n" +
@@ -37,7 +36,7 @@ final class HtmlTemplate {
         "</head>\n" +
         "<body>\n" +
         "<div class=\"wrap\">\n" +
-        "<div class=\"brand\"><div class=\"bn\">Mannat Communication</div><div class=\"bs\">Jio AirFiber Customer Records</div><div class=\"bs\">Tarsem ji · M: 9988863580</div></div>\n" +
+        "<div class=\"brand\"><div class=\"bn\">Mannat Communication</div><div class=\"bs\">Jio AirFiber Customer Records</div><div class=\"bs\">Tarsem ji - M: 9988863580</div></div>\n" +
         "<div class=\"bar\">\n" +
         "  <input id=\"q\" type=\"search\" placeholder=\"🔍\" autocomplete=\"off\">\n" +
         "  <div class=\"row\">\n" +
@@ -50,12 +49,10 @@ final class HtmlTemplate {
         "</div>\n" +
         "\n" +
         "<datalist id=\"pre\">\n" +
-        "<option value=\"दे रहा है (Returning)\">\n" +
-        "<option value=\"नहीं दे रहा (Not returning)\">\n" +
-        "<option value=\"दे दिया (Returned)\">\n" +
-        "<option value=\"कॉल नहीं उठाई (Call not picked)\">\n" +
-        "<option value=\"डिवाइस नहीं दे रहा – पेंडिंग (Device not returning pending)\">\n" +
-        "<option value=\"डिवाइस नहीं दे रहा (Device not returning)\">\n" +
+        "<option value=\"Done\">\n" +
+        "<option value=\"Yes\">\n" +
+        "<option value=\"Call Not Picked\">\n" +
+        "<option value=\"Not Returning\">\n" +
         "</datalist>\n" +
         "\n" +
         "<div id=\"m\" class=\"modal\"><div class=\"box\">\n" +
@@ -70,9 +67,17 @@ final class HtmlTemplate {
         "let D=SEED, cur=-1;\n" +
         "try{const s=localStorage.getItem(KEY);if(s)D=JSON.parse(s)}catch(e){}\n" +
         "const $=id=>document.getElementById(id);\n" +
-        "const F=[[\"name\",\"ग्राहक का नाम\"],[\"father\",\"पिता का नाम (Father name)\"],[\"village\",\"लोकेशन / गाँव\"],[\"near\",\"नियर बाई (Near by)\"],[\"mobile\",\"मोबाइल नंबर\"],[\"id\",\"वर्क ऑर्डर नंबर\"],[\"rsn\",\"RSN\"],[\"type\",\"प्रकार (ODU / IDU / STB)\"],[\"status\",\"रिमार्क / स्थिति\"],[\"stb\",\"STB सीरियल\"]];\n" +
+        "const F=[[\"name\",\"Customer Name\"],[\"father\",\"Father Name\"],[\"village\",\"Village / Location\"],[\"near\",\"Near By\"],[\"mobile\",\"Mobile Number\"],[\"id\",\"Work Order No.\"],[\"rsn\",\"RSN\"],[\"type\",\"Type (ODU / IDU / STB)\"],[\"status\",\"Status\"],[\"stb\",\"STB Serial\"]];\n" +
         "const esc=s=>String(s==null?\"\":s).replace(/&/g,\"&amp;\").replace(/</g,\"&lt;\").replace(/>/g,\"&gt;\").replace(/\"/g,\"&quot;\");\n" +
-        "const isYes=o=>/^(y|ok$|returning$|returned$)/i.test(o.status||\"\")||/दे रहा है|दे दिया/.test(o.status||\"\");\n" +
+        "function col(o){\n" +
+        "  const l=(o.status||\"\").toLowerCase().trim();\n" +
+        "  if(!l)return \"\";\n" +
+        "  if(l.includes(\"not pick\"))return \"#ffd600\";                       // yellow\n" +
+        "  if(l.startsWith(\"done\"))return \"#2ecc71\";                         // green\n" +
+        "  if(l===\"yes\"||l===\"y\"||l===\"ok\")return \"#ff9800\";                 // orange\n" +
+        "  if(l.startsWith(\"not\")||l===\"no\"||l.includes(\"switch\"))return \"#ff4d4d\"; // red\n" +
+        "  return \"\";\n" +
+        "}\n" +
         "function save(){try{localStorage.setItem(KEY,JSON.stringify(D))}catch(e){}}\n" +
         "function render(){\n" +
         "  const words=$(\"q\").value.trim().toLowerCase().split(/\\s+/).filter(Boolean), rows=[];\n" +
@@ -83,13 +88,14 @@ final class HtmlTemplate {
         "  $(\"cnt\").textContent=rows.length+\" / \"+D.length;\n" +
         "  $(\"list\").innerHTML=rows.length?rows.map(([o,i])=>{\n" +
         "    const n=String(o.mobile||\"\").replace(/\\D/g,\"\").slice(-10);\n" +
+        "    const c=col(o), st=c?` style=\"color:${c}\"`:\"\";\n" +
         "    return `<div class=\"item\" data-i=\"${i}\"><div class=\"info\">\n" +
-        "      <div class=\"nm\">${esc(o.name)}${o.status?`<span class=\"tag ${isYes(o)?\"yes\":\"not\"}\">${esc(o.status)}</span>`:\"\"}</div>\n" +
-        "      ${o.father?`<div class=\"sub\">👤 पिता: ${esc(o.father)}</div>`:\"\"}\n" +
-        "      <div class=\"sub\">📍 ${esc(o.village)} · 📱 ${esc(o.mobile)}</div>\n" +
-        "      ${o.near?`<div class=\"sub\">🏠 नियर बाई: ${esc(o.near)}</div>`:\"\"}\n" +
-        "      <div class=\"sub\">${esc(o.type)} · RSN: ${esc(o.rsn)} · WO: ${esc(o.id)}${o.stb?\" · STB: \"+esc(o.stb):\"\"}</div></div>\n" +
-        "      ${n.length===10?`<a class=\"call\" href=\"tel:+91${n}\">📞 कॉल</a>`:\"\"}</div>`;\n" +
+        "      <div class=\"nm\"${st}>${esc(o.name)}${o.status?`<span class=\"tag\">${esc(o.status)}</span>`:\"\"}</div>\n" +
+        "      ${o.father?`<div class=\"sub\"${st}>👤 Father: ${esc(o.father)}</div>`:\"\"}\n" +
+        "      <div class=\"sub\"${st}>📍 ${esc(o.village)} · 📱 ${esc(o.mobile)}</div>\n" +
+        "      ${o.near?`<div class=\"sub\"${st}>🏠 Near by: ${esc(o.near)}</div>`:\"\"}\n" +
+        "      <div class=\"sub\"${st}>${esc(o.type)} · RSN: ${esc(o.rsn)} · WO: ${esc(o.id)}${o.stb?\" · STB: \"+esc(o.stb):\"\"}</div></div>\n" +
+        "      ${n.length===10?`<a class=\"call\" href=\"tel:+91${n}\">📞 Call</a>`:\"\"}</div>`;\n" +
         "  }).join(\"\"):'<div class=\"empty\">—</div>';\n" +
         "}\n" +
         "function openM(i){\n" +

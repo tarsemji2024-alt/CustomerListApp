@@ -54,8 +54,16 @@ public class MainActivity extends Activity {
 
     static class Customer {
         String id = "", name = "", village = "", mobile = "", rsn = "", type = "", status = "", stb = "", father = "", near = "";
-        boolean isYes() { String l = status.toLowerCase(Locale.ROOT); return l.startsWith("y") || l.equals("ok") || l.equals("returning") || l.equals("returned")
-                    || l.contains("दे रहा है") || l.contains("दे दिया"); }
+        // Done = green, Yes = orange, Call Not Picked = yellow, Not Returning = red
+        int statusColor() {
+            String l = status.toLowerCase(Locale.ROOT).trim();
+            if (l.isEmpty()) return 0;
+            if (l.contains("not pick")) return 0xFFFFD600;                                   // yellow
+            if (l.startsWith("done")) return 0xFF2ECC71;                                     // green
+            if (l.equals("yes") || l.equals("y") || l.equals("ok")) return 0xFFFF9800;      // orange
+            if (l.startsWith("not") || l.equals("no") || l.contains("switch")) return 0xFFFF4D4D; // red
+            return 0;
+        }
         String all() {
             return (id + " " + name + " " + village + " " + mobile + " " + rsn + " " + type + " " + status + " " + stb + " " + father + " " + near)
                     .toLowerCase(Locale.ROOT);
@@ -69,6 +77,7 @@ public class MainActivity extends Activity {
     ArrayList<Customer> shown = new ArrayList<>();
     String pendingNumber = null;
     Adapter adapter;
+    SwipeListView list;
     EditText search;
     TextView count;
 
@@ -78,11 +87,17 @@ public class MainActivity extends Activity {
         setContentView(R.layout.activity_main);
         search = findViewById(R.id.search);
         count = findViewById(R.id.count);
-        ListView list = findViewById(R.id.list);
+        list = findViewById(R.id.list);
         adapter = new Adapter();
         list.setAdapter(adapter);
         list.setEmptyView(findViewById(R.id.emptyView));
-        list.setOnItemClickListener((p, v, pos, id) -> showEdit(shown.get(pos), false));
+        list.setOnDeleteListener(pos -> {
+            if (pos >= 0 && pos < shown.size()) deleteCustomer(shown.get(pos));
+        });
+        list.setOnItemClickListener((p, v, pos, id) -> {
+            if (list.closeOpenRow()) return;
+            showEdit(shown.get(pos), false);
+        });
 
         loadData();
         applyFilter();
@@ -97,7 +112,7 @@ public class MainActivity extends Activity {
         findViewById(R.id.btnExport).setOnClickListener(v -> showExportDialog());
     }
 
-    // ---------- सेव / लोड ----------
+    // ---------- Save / Load ----------
     void loadData() {
         SharedPreferences sp = getSharedPreferences(PREFS, Context.MODE_PRIVATE);
         String json = sp.getString(KEY, null);
@@ -136,7 +151,7 @@ public class MainActivity extends Activity {
         } catch (Exception e) { }
     }
 
-    // ---------- स्मार्ट पहचान ----------
+    // ---------- Smart detection ----------
     static String title(String s) {
         StringBuilder sb = new StringBuilder();
         boolean up = true;
@@ -161,7 +176,6 @@ public class MainActivity extends Activity {
         return p[b.length()];
     }
 
-    // पुराने गाँव के नामों से मिलता-जुलता नाम ढूँढे (जैसे moonak / Monak / MOONAK)
     String canonVillage(String t, List<Customer> known) {
         String l = t.trim().toLowerCase(Locale.ROOT);
         if (l.length() < 3) return null;
@@ -205,14 +219,13 @@ public class MainActivity extends Activity {
             else if (d.length() == 12 && d.startsWith("91")) d = d.substring(2);
             else if (d.length() == 11 && d.startsWith("0")) d = d.substring(1);
             if (d.matches("\\d{10}")) tens.add(d);
-            else if (d.matches("7\\d{8}")) c.id = d;                       // 9 अंक का वर्क ऑर्डर
+            else if (d.matches("7\\d{8}")) c.id = d;
             else if (d.matches("(?i)R[A-Z0-9]{9,}") && d.matches(".*\\d.*")) c.rsn = d.toUpperCase(Locale.ROOT);
             else if (d.matches("(?i)ODU|IDU|STB")) c.type = d.toUpperCase(Locale.ROOT);
-            else if (d.matches("(?i)yes|not|no|y|n")) c.status = d.toLowerCase(Locale.ROOT).startsWith("y") ? "Yes" : "not";
-            else if (d.matches("\\d+")) { /* बेकार नंबर छोड़ दो */ }
+            else if (d.matches("(?i)yes|not|no|y|n")) c.status = d.toLowerCase(Locale.ROOT).startsWith("y") ? "Yes" : "Not Returning";
+            else if (d.matches("\\d+")) { /* skip stray numbers */ }
             else texts.add(s);
         }
-        // वर्क ऑर्डर और मोबाइल अलग करना
         if (tens.size() >= 2) {
             String a = tens.get(0), b = tens.get(1);
             if (!a.startsWith("7") && b.startsWith("7")) { c.mobile = a; c.id = b; }
@@ -222,7 +235,6 @@ public class MainActivity extends Activity {
             if (c.id.isEmpty() && a.matches("(71|709)\\d{7,8}")) c.id = a;
             else c.mobile = a;
         }
-        // नाम और गाँव अलग करना
         ArrayList<String> nameParts = new ArrayList<>();
         String village = "";
         for (String t : texts) {
@@ -259,7 +271,7 @@ public class MainActivity extends Activity {
         return false;
     }
 
-    // ---------- Excel इम्पोर्ट ----------
+    // ---------- Excel import ----------
     static final int REQ_FILE = 202;
     ArrayList<Customer> pendingRows = new ArrayList<>();
 
@@ -295,7 +307,7 @@ public class MainActivity extends Activity {
     }
 
     void readExcel(final Uri uri) {
-        Toast.makeText(this, "Excel फ़ाइल पढ़ रहे हैं…", Toast.LENGTH_SHORT).show();
+        Toast.makeText(this, "Reading Excel file…", Toast.LENGTH_SHORT).show();
         new Thread(() -> {
             try {
                 File tmp = new File(getCacheDir(), "import.xlsx");
@@ -311,8 +323,8 @@ public class MainActivity extends Activity {
                 runOnUiThread(() -> askImport(rows));
             } catch (final Exception e) {
                 runOnUiThread(() -> new AlertDialog.Builder(this)
-                        .setTitle("फ़ाइल नहीं पढ़ी जा सकी")
-                        .setMessage("सिर्फ़ .xlsx फ़ाइल चलेगी। पुरानी .xls हो तो Excel में Save As करके .xlsx बना लें।\n\n" + e)
+                        .setTitle("Could not read file")
+                        .setMessage("Only .xlsx files are supported. For an old .xls file, open it in Excel and use Save As .xlsx.\n\n" + e)
                         .setPositiveButton("OK", null).show());
             }
         }).start();
@@ -320,13 +332,13 @@ public class MainActivity extends Activity {
 
     void askImport(ArrayList<Customer> rows) {
         if (rows.isEmpty()) {
-            Toast.makeText(this, "फ़ाइल में कोई ग्राहक नहीं मिला", Toast.LENGTH_LONG).show();
+            Toast.makeText(this, "No customers found in the file", Toast.LENGTH_LONG).show();
             return;
         }
         pendingRows = rows;
         new AlertDialog.Builder(this)
-                .setTitle("Excel से " + rows.size() + " ग्राहक मिले")
-                .setMessage("नाम, गाँव, मोबाइल, वर्क ऑर्डर और RSN अपने आप पहचान लिए गए हैं।")
+                .setTitle(rows.size() + " customers found in Excel")
+                .setMessage("Name, village, mobile, work order and RSN were detected automatically.")
                 .setPositiveButton("Add to list", (d, w) -> applyImport(false))
                 .setNeutralButton("Replace all", (d, w) -> applyImport(true))
                 .setNegativeButton("Cancel", null)
@@ -358,7 +370,7 @@ public class MainActivity extends Activity {
         pendingRows = new ArrayList<>();
         saveData();
         applyFilter();
-        Toast.makeText(this, added + " नए जुड़े, " + updated + " अपडेट हुए", Toast.LENGTH_LONG).show();
+        Toast.makeText(this, added + " new added, " + updated + " updated", Toast.LENGTH_LONG).show();
     }
 
     ArrayList<Customer> parseExcel(File f) throws Exception {
@@ -401,7 +413,6 @@ public class MainActivity extends Activity {
         return (i < 0 || i >= cells.size()) ? "" : clean(cells.get(i));
     }
 
-    // पहली लाइन हेडर हो तो कॉलम पहचानो (Order ID, Name, Address, Mobile no, Serial no ...)
     int[] headerMap(ArrayList<String> cells) {
         int[] m = {-1, -1, -1, -1, -1, -1, -1, -1};
         for (int i = 0; i < cells.size(); i++) {
@@ -410,7 +421,7 @@ public class MainActivity extends Activity {
             int k = -1;
             if (h.contains("order id") || h.contains("work order") || h.equals("wo") || h.equals("order")) k = 0;
             else if (h.equals("name") || h.contains("customer")) k = 1;
-            else if (h.contains("address") || h.contains("village") || h.contains("location") || h.contains("गाँव")) k = 2;
+            else if (h.contains("address") || h.contains("village") || h.contains("location")) k = 2;
             else if (h.contains("mobile") || h.contains("phone") || h.contains("contact")) k = 3;
             else if (h.contains("stb")) k = 7;
             else if (h.contains("serial") || h.equals("rsn")) k = 4;
@@ -421,7 +432,6 @@ public class MainActivity extends Activity {
         return (m[1] >= 0 && m[3] >= 0) ? m : null;
     }
 
-    // हेडर न हो तो: वर्क ऑर्डर, नाम, गाँव, मोबाइल, RSN, प्रकार, रिमार्क
     int[] defaultMap(ArrayList<String> cells) {
         if (cells.size() >= 5 && get(cells, 0).replaceAll("\\D", "").matches("\\d{9,10}"))
             return new int[]{0, 1, 2, 3, 4, 5, 6, -1};
@@ -451,7 +461,9 @@ public class MainActivity extends Activity {
             c.stb = get(cells, m[7]).replace(" ", "").toUpperCase(Locale.ROOT);
             String st = get(cells, m[6]);
             String sl = st.toLowerCase(Locale.ROOT);
-            c.status = (sl.equals("yes") || sl.equals("y")) ? "Yes" : sl.equals("not") ? "not" : st;
+            c.status = (sl.equals("yes") || sl.equals("y")) ? "Yes"
+                    : (sl.equals("not") || sl.equals("no")) ? "Not Returning"
+                    : sl.equals("done") ? "Done" : st;
         }
         if (c.type.isEmpty()) {
             String sn = sheet.toLowerCase(Locale.ROOT);
@@ -463,7 +475,7 @@ public class MainActivity extends Activity {
         return c;
     }
 
-    // ---------- xlsx पढ़ने के औज़ार (बिना किसी लाइब्रेरी के) ----------
+    // ---------- xlsx reader (no library) ----------
     static int colIndex(String ref) {
         int idx = 0;
         for (int i = 0; i < ref.length(); i++) {
@@ -545,8 +557,6 @@ public class MainActivity extends Activity {
         return sb.toString();
     }
 
-    // शीट को लाइन-दर-लाइन पढ़ता है। लगातार 200 खाली लाइनें आएँ तो रुक जाता है
-    // (बड़ी फ़ाइलों में लाखों खाली लाइनें होती हैं)
     void readSheet(ZipFile zf, String path, ArrayList<String> shared, RowSink sink) throws Exception {
         ZipEntry ze = zf.getEntry(path);
         if (ze == null) return;
@@ -590,7 +600,7 @@ public class MainActivity extends Activity {
         }
     }
 
-    // ---------- देखें / बदलें ----------
+    // ---------- View / Edit ----------
     void showEdit(final Customer c, final boolean isNew) {
         View box = LayoutInflater.from(this).inflate(R.layout.dialog_edit, null);
         final EditText eName = box.findViewById(R.id.eName);
@@ -644,21 +654,14 @@ public class MainActivity extends Activity {
         b.show();
     }
 
-    static final String[] PRESETS = {
-        "दे रहा है (Returning)",
-        "नहीं दे रहा (Not returning)",
-        "दे दिया (Returned)",
-        "कॉल नहीं उठाई (Call not picked)",
-        "डिवाइस नहीं दे रहा – पेंडिंग (Device not returning pending)",
-        "डिवाइस नहीं दे रहा (Device not returning)"
-    };
+    static final String[] PRESETS = {"Done", "Yes", "Call Not Picked", "Not Returning"};
 
     void showPresets(final EditText target) {
-        new AlertDialog.Builder(this).setTitle("Select remark")
+        new AlertDialog.Builder(this).setTitle("Select status")
                 .setItems(PRESETS, (d, w) -> target.setText(PRESETS[w])).show();
     }
 
-    // ---------- एक्सपोर्ट ----------
+    // ---------- Export ----------
     static final int REQ_SAVE = 303;
     byte[] pendingExport = null;
 
@@ -671,7 +674,6 @@ public class MainActivity extends Activity {
                 .show();
     }
 
-    // फ़ाइल बनाकर Android का "कहाँ सेव करें" वाला पेज खोलता है
     void startExport(boolean excel) {
         try {
             String stamp = new SimpleDateFormat("yyyyMMdd_HHmm", Locale.US).format(new Date());
@@ -737,7 +739,7 @@ public class MainActivity extends Activity {
 
         StringBuilder sb = new StringBuilder(xml);
         sb.append("<worksheet xmlns=\"http://schemas.openxmlformats.org/spreadsheetml/2006/main\"><sheetData>");
-        String[] head = {"क्रम", "वर्क ऑर्डर", "नाम", "लोकेशन", "मोबाइल", "RSN", "प्रकार", "रिमार्क", "STB", "पिता का नाम", "नियर बाई"};
+        String[] head = {"No.", "Work Order", "Name", "Village / Location", "Mobile", "RSN", "Type", "Status", "STB", "Father Name", "Near By"};
         addRow(sb, 1, head);
         int r = 2;
         for (Customer c : all) {
@@ -759,8 +761,7 @@ public class MainActivity extends Activity {
         sb.append("</row>");
     }
 
-    // ---------- सर्च / फ़िल्टर ----------
-    // सर्च: लिखे हुए सभी शब्द मिलने चाहिए (जैसे "moonak not returning")
+    // ---------- Search ----------
     void applyFilter() {
         String q = search.getText().toString().trim().toLowerCase(Locale.ROOT);
         String[] words = q.isEmpty() ? new String[0] : q.split("\\s+");
@@ -775,12 +776,20 @@ public class MainActivity extends Activity {
         adapter.notifyDataSetChanged();
     }
 
-    // ---------- कॉल ----------
+    void deleteCustomer(Customer c) {
+        all.remove(c);
+        saveData();
+        list.resetOpen();
+        applyFilter();
+        Toast.makeText(this, "Deleted", Toast.LENGTH_SHORT).show();
+    }
+
+    // ---------- Call ----------
     void callNumber(String raw) {
         String digits = raw.replaceAll("\\D", "");
         if (digits.length() > 10) digits = digits.substring(digits.length() - 10);
         if (digits.length() != 10) {
-            Toast.makeText(this, "मोबाइल नंबर सही नहीं है", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "Invalid mobile number", Toast.LENGTH_SHORT).show();
             return;
         }
         pendingNumber = digits;
@@ -802,7 +811,7 @@ public class MainActivity extends Activity {
         }
     }
 
-    // ---------- लिस्ट एडैप्टर ----------
+    // ---------- List adapter ----------
     class Adapter extends BaseAdapter {
         public int getCount() { return shown.size(); }
         public Object getItem(int i) { return shown.get(i); }
@@ -811,17 +820,40 @@ public class MainActivity extends Activity {
             if (v == null) v = LayoutInflater.from(MainActivity.this).inflate(R.layout.item_customer, parent, false);
             final Customer c = shown.get(i);
             TextView nm = v.findViewById(R.id.tvName);
-            nm.setText(c.name + (c.status.isEmpty() ? "" : "  [" + c.status + "]"));
-            nm.setTextColor(c.status.isEmpty() || c.isYes() ? Color.parseColor("#FFFFFF") : Color.parseColor("#FF6B60"));
-            ((TextView) v.findViewById(R.id.tvSub1)).setText("📍 " + c.village + "  ·  📱 " + c.mobile);
             TextView tf = v.findViewById(R.id.tvFather);
-            tf.setVisibility(c.father.isEmpty() ? View.GONE : View.VISIBLE);
-            tf.setText("👤 पिता: " + c.father);
+            TextView s1 = v.findViewById(R.id.tvSub1);
             TextView tn = v.findViewById(R.id.tvNear);
+            TextView s2 = v.findViewById(R.id.tvSub2);
+            nm.setText(c.name + (c.status.isEmpty() ? "" : "  [" + c.status + "]"));
+            tf.setText("👤 Father: " + c.father);
+            s1.setText("📍 " + c.village + "  ·  📱 " + c.mobile);
+            tn.setText("🏠 Near by: " + c.near);
+            s2.setText(c.type + " · RSN: " + c.rsn + " · WO: " + c.id + (c.stb.isEmpty() ? "" : " · STB: " + c.stb));
+            tf.setVisibility(c.father.isEmpty() ? View.GONE : View.VISIBLE);
             tn.setVisibility(c.near.isEmpty() ? View.GONE : View.VISIBLE);
-            tn.setText("🏠 नियर बाई: " + c.near);
-            ((TextView) v.findViewById(R.id.tvSub2)).setText(c.type + " · RSN: " + c.rsn + " · WO: " + c.id + (c.stb.isEmpty() ? "" : " · STB: " + c.stb));
+            // whole card text takes the status colour
+            int sc = c.statusColor();
+            if (sc != 0) {
+                int soft = (sc & 0x00FFFFFF) | 0xE0000000;
+                nm.setTextColor(sc);
+                tf.setTextColor(soft);
+                s1.setTextColor(soft);
+                tn.setTextColor(soft);
+                s2.setTextColor(soft);
+            } else {
+                nm.setTextColor(Color.parseColor("#FFFFFF"));
+                tf.setTextColor(Color.parseColor("#C9C9D2"));
+                s1.setTextColor(Color.parseColor("#A0A0AA"));
+                tn.setTextColor(Color.parseColor("#A0A0AA"));
+                s2.setTextColor(Color.parseColor("#8A8A94"));
+            }
             v.findViewById(R.id.btnCall).setOnClickListener(x -> callNumber(c.mobile));
+            // reset swipe state and connect the recycle bin to delete
+            v.findViewById(R.id.card).setTranslationX(0f);
+            v.findViewById(R.id.binLayer).setVisibility(View.INVISIBLE);
+            View.OnClickListener del = x -> deleteCustomer(c);
+            v.findViewById(R.id.binLeft).setOnClickListener(del);
+            v.findViewById(R.id.binRight).setOnClickListener(del);
             return v;
         }
     }

@@ -1,29 +1,46 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:layout_width="match_parent" android:layout_height="wrap_content"
-    android:orientation="horizontal" android:gravity="center_vertical"
-    android:background="@drawable/card_bg" android:padding="14dp">
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent" android:layout_height="wrap_content">
 
-    <LinearLayout android:layout_width="0dp" android:layout_weight="1"
-        android:layout_height="wrap_content" android:orientation="vertical">
-        <TextView android:id="@+id/tvName" android:layout_width="wrap_content"
-            android:layout_height="wrap_content" android:textSize="16sp"
-            android:textStyle="bold" android:textColor="#FFFFFF" />
-        <TextView android:id="@+id/tvFather" android:layout_width="wrap_content"
-            android:layout_height="wrap_content" android:textColor="#C9C9D2" android:textSize="13sp" />
-        <TextView android:id="@+id/tvSub1" android:layout_width="wrap_content"
-            android:layout_height="wrap_content" android:textColor="#A0A0AA" android:textSize="13sp" />
-        <TextView android:id="@+id/tvNear" android:layout_width="wrap_content"
-            android:layout_height="wrap_content" android:textColor="#A0A0AA" android:textSize="13sp" />
-        <TextView android:id="@+id/tvSub2" android:layout_width="wrap_content"
-            android:layout_height="wrap_content" android:textColor="#8A8A94" android:textSize="12sp" />
+    <FrameLayout android:id="@+id/binLayer" android:layout_width="match_parent"
+        android:layout_height="match_parent" android:background="@drawable/bin_bg"
+        android:visibility="invisible">
+        <ImageView android:id="@+id/binLeft" android:layout_width="84dp"
+            android:layout_height="match_parent" android:layout_gravity="left"
+            android:scaleType="center" android:src="@drawable/ic_delete"
+            android:contentDescription="Delete" />
+        <ImageView android:id="@+id/binRight" android:layout_width="84dp"
+            android:layout_height="match_parent" android:layout_gravity="right"
+            android:scaleType="center" android:src="@drawable/ic_delete"
+            android:contentDescription="Delete" />
+    </FrameLayout>
+
+    <LinearLayout android:id="@+id/card" android:layout_width="match_parent"
+        android:layout_height="wrap_content" android:orientation="horizontal"
+        android:gravity="center_vertical" android:background="@drawable/card_bg"
+        android:padding="14dp">
+
+        <LinearLayout android:layout_width="0dp" android:layout_weight="1"
+            android:layout_height="wrap_content" android:orientation="vertical">
+            <TextView android:id="@+id/tvName" android:layout_width="wrap_content"
+                android:layout_height="wrap_content" android:textSize="16sp"
+                android:textStyle="bold" android:textColor="#FFFFFF" />
+            <TextView android:id="@+id/tvFather" android:layout_width="wrap_content"
+                android:layout_height="wrap_content" android:textColor="#C9C9D2" android:textSize="13sp" />
+            <TextView android:id="@+id/tvSub1" android:layout_width="wrap_content"
+                android:layout_height="wrap_content" android:textColor="#A0A0AA" android:textSize="13sp" />
+            <TextView android:id="@+id/tvNear" android:layout_width="wrap_content"
+                android:layout_height="wrap_content" android:textColor="#A0A0AA" android:textSize="13sp" />
+            <TextView android:id="@+id/tvSub2" android:layout_width="wrap_content"
+                android:layout_height="wrap_content" android:textColor="#8A8A94" android:textSize="12sp" />
+        </LinearLayout>
+
+        <Button android:id="@+id/btnCall" android:layout_width="wrap_content"
+            android:layout_height="46dp" android:minWidth="0dp" android:minHeight="0dp"
+            android:paddingLeft="18dp" android:paddingRight="18dp"
+            android:text="📞 Call" android:textAllCaps="false" android:textStyle="bold"
+            android:textSize="14sp" android:textColor="#FFFFFF"
+            android:background="@drawable/call_button" android:stateListAnimator="@null"
+            android:focusable="false" android:layout_marginLeft="10dp" />
     </LinearLayout>
-
-    <Button android:id="@+id/btnCall" android:layout_width="wrap_content"
-        android:layout_height="46dp" android:minWidth="0dp" android:minHeight="0dp"
-        android:paddingLeft="18dp" android:paddingRight="18dp"
-        android:text="📞 कॉल" android:textAllCaps="false" android:textStyle="bold"
-        android:textSize="14sp" android:textColor="#FFFFFF"
-        android:background="@drawable/call_button" android:stateListAnimator="@null"
-        android:focusable="false" android:layout_marginLeft="10dp" />
-</LinearLayout>
+</FrameLayout>

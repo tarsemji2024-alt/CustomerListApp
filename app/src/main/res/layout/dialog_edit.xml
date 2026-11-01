@@ -6,32 +6,32 @@
         android:paddingTop="10dp">
 
         <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-            android:text="ग्राहक का नाम" android:textSize="12sp" android:textColor="#A0A0AA" />
+            android:text="Customer Name" android:textSize="12sp" android:textColor="#A0A0AA" />
         <EditText android:textColor="#FFFFFF" android:id="@+id/eName" android:layout_width="match_parent"
             android:layout_height="wrap_content" android:inputType="textPersonName|textCapWords" />
 
         <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-            android:text="पिता का नाम (Father name)" android:textSize="12sp" android:textColor="#A0A0AA" />
+            android:text="Father Name" android:textSize="12sp" android:textColor="#A0A0AA" />
         <EditText android:textColor="#FFFFFF" android:id="@+id/eFather" android:layout_width="match_parent"
             android:layout_height="wrap_content" android:inputType="textPersonName|textCapWords" />
 
         <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-            android:text="लोकेशन / गाँव" android:textSize="12sp" android:textColor="#A0A0AA" />
+            android:text="Village / Location" android:textSize="12sp" android:textColor="#A0A0AA" />
         <EditText android:textColor="#FFFFFF" android:id="@+id/eLoc" android:layout_width="match_parent"
             android:layout_height="wrap_content" android:inputType="text|textCapWords" />
 
         <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-            android:text="नियर बाई (Near by)" android:textSize="12sp" android:textColor="#A0A0AA" />
+            android:text="Near By" android:textSize="12sp" android:textColor="#A0A0AA" />
         <EditText android:textColor="#FFFFFF" android:id="@+id/eNear" android:layout_width="match_parent"
             android:layout_height="wrap_content" android:inputType="text|textCapWords" />
 
         <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-            android:text="मोबाइल नंबर" android:textSize="12sp" android:textColor="#A0A0AA" />
+            android:text="Mobile Number" android:textSize="12sp" android:textColor="#A0A0AA" />
         <EditText android:textColor="#FFFFFF" android:id="@+id/eMob" android:layout_width="match_parent"
             android:layout_height="wrap_content" android:inputType="phone" />
 
         <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-            android:text="वर्क ऑर्डर नंबर" android:textSize="12sp" android:textColor="#A0A0AA" />
+            android:text="Work Order No." android:textSize="12sp" android:textColor="#A0A0AA" />
         <EditText android:textColor="#FFFFFF" android:id="@+id/eWo" android:layout_width="match_parent"
             android:layout_height="wrap_content" android:inputType="number" />
 
@@ -41,12 +41,12 @@
             android:layout_height="wrap_content" android:inputType="textCapCharacters" />
 
         <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-            android:text="प्रकार (ODU / IDU / STB)" android:textSize="12sp" android:textColor="#A0A0AA" />
+            android:text="Type (ODU / IDU / STB)" android:textSize="12sp" android:textColor="#A0A0AA" />
         <EditText android:textColor="#FFFFFF" android:id="@+id/eType" android:layout_width="match_parent"
             android:layout_height="wrap_content" android:inputType="textCapCharacters" />
 
         <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-            android:text="रिमार्क / स्थिति" android:textSize="12sp" android:textColor="#A0A0AA" />
+            android:text="Status" android:textSize="12sp" android:textColor="#A0A0AA" />
         <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
             android:orientation="horizontal" android:gravity="center_vertical">
             <EditText android:textColor="#FFFFFF" android:id="@+id/eSt" android:layout_width="0dp"
@@ -59,7 +59,7 @@
         </LinearLayout>
 
         <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-            android:text="STB सीरियल" android:textSize="12sp" android:textColor="#A0A0AA" />
+            android:text="STB Serial" android:textSize="12sp" android:textColor="#A0A0AA" />
         <EditText android:textColor="#FFFFFF" android:id="@+id/eStb" android:layout_width="match_parent"
             android:layout_height="wrap_content" android:inputType="textCapCharacters" />
     </LinearLayout>
