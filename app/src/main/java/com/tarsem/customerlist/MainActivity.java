@@ -58,19 +58,7 @@ public class MainActivity extends Activity {
 
     static final String SEED =
         "7101699225|Aman Sharma|Moonak|9518286292|RNOODGKQ0026476|ODU|not\n" +
-        "7117226851|Gurjit Singh/joga Singh|Chural kalan|7888432167|RTHODGLK0013911|ODU|Yes\n" +
-        "7104015773|Harvinder Kumar|Moonak|9915208007|RTHODJKK0090400|ODU|Yes\n" +
-        "7112870241|Karam Chand/Balkar singh|Mackod|9855997492|RTHODHKK0127147|ODU|Yes\n" +
-        "7105549179|Karav singh|Moonak|6283766292|RARODEK00070403|ODU|yes\n" +
-        "7124888343|Rajpal Singh|moonak|9569097512|RHFODKL00050558|ODU|yes\n" +
-        "7099014543|Rajpal Singh|kaliya|7087131932|RHFODAL00068125|ODU|Yes\n" +
-        "7105541822|Sahil Singh|lahara|8699721397|RNOODGKQ0061065|ODU|yes\n" +
-        "7107477342|Sanju Singh|Balran|9646103506|RSVODJKBK048860|ODU|Yes\n" +
-        "7105217105|Sarbjeet Singh/baljinder|Navagavo|9463000633|RNOODGKQ0015576|ODU|Yes\n" +
-        "7104121994|Shashi Goyal|Moonak|8872691421|RSVODALBK463135|ODU|Yes\n" +
-        "7103706824|Sukhwinder Singh/sukhdev singh|Handa|9050905310|RTHODEK00150901|ODU|Yes\n" +
-        "7107383413|Surjit Singh/joginder singh|Moonak|8146033350|RTHODIKK0058735|ODU|yes";
-
+      
     static final String PREFS = "customer_list", KEY = "data";
     static final int REQ_CALL = 101;
 
