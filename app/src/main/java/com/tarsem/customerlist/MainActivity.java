@@ -12,8 +12,11 @@ import android.graphics.Color;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.os.Environment;
 import android.provider.MediaStore;
+import android.provider.Settings;
 import android.util.Xml;
 import android.text.Editable;
 import android.text.InputType;
@@ -22,6 +25,7 @@ import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.WindowManager;
 import android.widget.BaseAdapter;
 import android.widget.Button;
 import android.widget.EditText;
@@ -64,6 +68,12 @@ public class MainActivity extends Activity {
             if (l.startsWith("not") || l.equals("no") || l.contains("switch")) return 0xFFFF4D4D; // red
             return 0;
         }
+        // customers who need a WhatsApp reminder: Call Not Picked (yellow) or Not Returning (red)
+        boolean needsWhatsApp() {
+            int c = statusColor();
+            return c == 0xFFFFD600 || c == 0xFFFF4D4D;
+        }
+
         String all() {
             return (id + " " + name + " " + village + " " + mobile + " " + rsn + " " + type + " " + status + " " + stb + " " + father + " " + near)
                     .toLowerCase(Locale.ROOT);
@@ -78,6 +88,7 @@ public class MainActivity extends Activity {
     String pendingNumber = null;
     Adapter adapter;
     SwipeListView list;
+    TextView sendAll;
     EditText search;
     TextView count;
 
@@ -87,6 +98,9 @@ public class MainActivity extends Activity {
         setContentView(R.layout.activity_main);
         search = findViewById(R.id.search);
         count = findViewById(R.id.count);
+        sendAll = findViewById(R.id.tvSendAll);
+        sendAll.setOnClickListener(v -> startQueue());
+        findViewById(R.id.tvEditMsg).setOnClickListener(v -> editMessage());
         list = findViewById(R.id.list);
         adapter = new Adapter();
         list.setAdapter(adapter);
@@ -773,6 +787,7 @@ public class MainActivity extends Activity {
             if (ok) shown.add(c);
         }
         count.setText(shown.size() + " / " + all.size());
+        sendAll.setText("📨 Send all (" + eligible().size() + ")");
         adapter.notifyDataSetChanged();
     }
 
@@ -782,6 +797,237 @@ public class MainActivity extends Activity {
         list.resetOpen();
         applyFilter();
         Toast.makeText(this, "Deleted", Toast.LENGTH_SHORT).show();
+    }
+
+    // ---------- WhatsApp ----------
+    // Message sent to customers (editable from the "Message" link on the main screen).
+    // {NAME} {WO} {RSN} {MOBILE} {VILLAGE} are filled in for each customer.
+    static final String DEFAULT_MSG =
+        "नमस्ते {NAME} जी,\n\n" +
+        "आपके नाम पर Jio AirFiber (वाईफाई) का कनेक्शन था। वह काफ़ी समय से बंद होने के कारण कंपनी ने उसे सस्पेंड कर दिया है और कनेक्शन बंद हो चुका है।\n\n" +
+        "आपकी जानकारी:\n" +
+        "नाम: {NAME}\n" +
+        "वर्क ऑर्डर: {WO}\n" +
+        "सीरियल नंबर (RSN): {RSN}\n\n" +
+        "हम आपका डिवाइस पिकअप करके कंपनी में जमा करवाना चाहते हैं। कृपया अपना एड्रेस और मोबाइल नंबर हमें कन्फर्म करवा दें, ताकि हम आकर डिवाइस ले जाएँ।\n\n" +
+        "आप चाहें तो खुद डिवाइस यहाँ जमा करवा सकते हैं:\n" +
+        "मन्नत कम्युनिकेशन, वाटर बक्स वाली गली, Moonak\n\n" +
+        "या तरसेम जी को इस नंबर पर कॉल करें: 9988863580\n" +
+        "वे आकर आपका डिवाइस पिकअप करके कंपनी में जमा कर देंगे।\n\n" +
+        "धन्यवाद\n" +
+        "मन्नत कम्युनिकेशन";
+
+    ArrayList<Customer> waQueue = new ArrayList<>();
+    int waIndex = 0;
+    boolean waActive = false, waOpened = false;
+
+    String template() {
+        return getSharedPreferences(PREFS, Context.MODE_PRIVATE).getString("wa_msg", DEFAULT_MSG);
+    }
+
+    // fills the template; a line whose value is empty (e.g. no RSN) is left out
+    static String fillTemplate(String tpl, Customer c) {
+        StringBuilder sb = new StringBuilder();
+        for (String line : tpl.split("\n", -1)) {
+            if ((line.contains("{WO}") && c.id.isEmpty()) || (line.contains("{RSN}") && c.rsn.isEmpty())
+                    || (line.contains("{MOBILE}") && c.mobile.isEmpty())
+                    || (line.contains("{VILLAGE}") && c.village.isEmpty())) continue;
+            sb.append(line.replace("{NAME}", c.name).replace("{WO}", c.id).replace("{RSN}", c.rsn)
+                    .replace("{MOBILE}", c.mobile).replace("{VILLAGE}", c.village)).append('\n');
+        }
+        return sb.toString().trim();
+    }
+
+    // 10-digit Indian mobile -> 91XXXXXXXXXX, or null if the number is not valid
+    static String waNumber(String raw) {
+        String d = raw.replaceAll("\\D", "");
+        if (d.length() > 10) d = d.substring(d.length() - 10);
+        return d.length() == 10 ? "91" + d : null;
+    }
+
+    void openWhatsApp(Customer c) {
+        String num = waNumber(c.mobile);
+        if (num == null) {
+            Toast.makeText(this, "Invalid mobile number", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        try {
+            Uri u = Uri.parse("https://wa.me/" + num + "?text=" + Uri.encode(fillTemplate(template(), c)));
+            startActivity(new Intent(Intent.ACTION_VIEW, u));
+        } catch (Exception e) {
+            Toast.makeText(this, "Could not open WhatsApp", Toast.LENGTH_LONG).show();
+        }
+    }
+
+    // customers in the current list who need a reminder and have a valid number
+    ArrayList<Customer> eligible() {
+        ArrayList<Customer> out = new ArrayList<>();
+        for (Customer c : shown) if (c.needsWhatsApp() && waNumber(c.mobile) != null) out.add(c);
+        return out;
+    }
+
+    boolean waAuto = false;
+    final Handler uiHandler = new Handler(Looper.getMainLooper());
+
+    int waDelay() {
+        int d = getSharedPreferences(PREFS, Context.MODE_PRIVATE).getInt("wa_delay", 30);
+        return Math.max(10, Math.min(600, d));
+    }
+
+    void startQueue() {
+        final ArrayList<Customer> q = eligible();
+        if (q.isEmpty()) {
+            Toast.makeText(this, "No Call Not Picked / Not Returning customers in this list", Toast.LENGTH_LONG).show();
+            return;
+        }
+        final boolean auto = WaAutoService.isEnabled();
+        LinearLayout box = new LinearLayout(this);
+        box.setOrientation(LinearLayout.VERTICAL);
+        box.setPadding(50, 20, 50, 0);
+        TextView info = new TextView(this);
+        info.setTextSize(14);
+        final EditText sec = new EditText(this);
+        sec.setInputType(InputType.TYPE_CLASS_NUMBER);
+        sec.setText(String.valueOf(waDelay()));
+        if (auto) {
+            info.setText("Auto mode: the app opens WhatsApp for each customer, taps Send, comes back and waits before the next one. "
+                    + "Keep the screen on and don't use the phone meanwhile.\n\n"
+                    + "WhatsApp's rules discourage automated bulk messages and your number can get restricted. "
+                    + "Start with a few customers.\n\nSeconds between messages (10 - 600):");
+            box.addView(info);
+            box.addView(sec);
+        } else {
+            info.setText("Manual mode: WhatsApp opens for each customer with the message ready. Tap Send, then come back here for the next one.\n\n"
+                    + "For automatic sending, turn on \"Customer List - WhatsApp Auto Send\" in Accessibility settings.");
+            box.addView(info);
+        }
+        AlertDialog.Builder b = new AlertDialog.Builder(this)
+                .setTitle("Send WhatsApp to " + q.size() + " customers?")
+                .setView(box)
+                .setPositiveButton("Start", (d, w) -> {
+                    if (auto) {
+                        int v = 30;
+                        try { v = Integer.parseInt(sec.getText().toString().trim()); } catch (Exception e) { }
+                        v = Math.max(10, Math.min(600, v));
+                        getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putInt("wa_delay", v).apply();
+                    }
+                    waQueue = q;
+                    waIndex = 0;
+                    waActive = true;
+                    waAuto = auto;
+                    getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+                    openQueued();
+                })
+                .setNegativeButton("Cancel", null);
+        if (!auto) {
+            b.setNeutralButton("Enable auto", (d, w) -> startActivity(new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)));
+        }
+        b.show();
+    }
+
+    void finishQueue() {
+        waActive = false;
+        waAuto = false;
+        waOpened = false;
+        uiHandler.removeCallbacksAndMessages(null);
+        getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+    }
+
+    void openQueued() {
+        Customer c = waQueue.get(waIndex);
+        waIndex++;
+        waOpened = true;
+        if (waAuto) WaAutoService.begin();
+        openWhatsApp(c);
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        if (waActive && waOpened) {
+            waOpened = false;
+            if (waAuto) autoNext(); else showNext();
+        }
+    }
+
+    // manual mode: ask before opening the next chat
+    void showNext() {
+        if (waIndex >= waQueue.size()) {
+            finishQueue();
+            Toast.makeText(this, "All messages done ✅", Toast.LENGTH_LONG).show();
+            return;
+        }
+        Customer c = waQueue.get(waIndex);
+        new AlertDialog.Builder(this)
+                .setTitle("Next: " + (waIndex + 1) + " of " + waQueue.size())
+                .setMessage(c.name + "\n" + c.mobile)
+                .setCancelable(false)
+                .setPositiveButton("Open WhatsApp", (d, w) -> openQueued())
+                .setNeutralButton("Skip", (d, w) -> { waIndex++; showNext(); })
+                .setNegativeButton("Stop", (d, w) -> finishQueue())
+                .show();
+    }
+
+    // auto mode: back in the app after a send attempt
+    void autoNext() {
+        if (WaAutoService.result == 1) { showCountdown(); return; }
+        Customer c = waQueue.get(waIndex - 1);
+        new AlertDialog.Builder(this)
+                .setTitle("Could not confirm the message")
+                .setMessage(c.name + " (" + c.mobile + ")\n\nThe Send button was not found. The number may not be on WhatsApp, or the WhatsApp screen is different.")
+                .setCancelable(false)
+                .setPositiveButton("Continue", (d, w) -> showCountdown())
+                .setNegativeButton("Stop", (d, w) -> finishQueue())
+                .show();
+    }
+
+    void showCountdown() {
+        if (waIndex >= waQueue.size()) {
+            finishQueue();
+            Toast.makeText(this, "All messages done ✅", Toast.LENGTH_LONG).show();
+            return;
+        }
+        final Customer next = waQueue.get(waIndex);
+        final int[] left = {waDelay()};
+        final AlertDialog d = new AlertDialog.Builder(this)
+                .setTitle("Done " + waIndex + " of " + waQueue.size())
+                .setMessage(" ")
+                .setCancelable(false)
+                .setNegativeButton("Stop", (x, w) -> finishQueue())
+                .create();
+        d.show();
+        uiHandler.post(new Runnable() {
+            @Override public void run() {
+                if (left[0] <= 0) {
+                    d.dismiss();
+                    openQueued();
+                    return;
+                }
+                d.setMessage("Next: " + next.name + " in " + left[0] + " sec\nKeep the screen on.");
+                left[0]--;
+                uiHandler.postDelayed(this, 1000);
+            }
+        });
+    }
+
+    void editMessage() {
+        final EditText et = new EditText(this);
+        et.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_MULTI_LINE);
+        et.setMinLines(8);
+        et.setGravity(Gravity.TOP);
+        et.setText(template());
+        ScrollView sv = new ScrollView(this);
+        sv.addView(et);
+        new AlertDialog.Builder(this)
+                .setTitle("WhatsApp message")
+                .setMessage("Use {NAME}, {WO}, {RSN}, {MOBILE}, {VILLAGE}. A line with an empty value is skipped.")
+                .setView(sv)
+                .setPositiveButton("Save", (d, w) -> getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+                        .edit().putString("wa_msg", et.getText().toString()).apply())
+                .setNeutralButton("Reset", (d, w) -> getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+                        .edit().remove("wa_msg").apply())
+                .setNegativeButton("Cancel", null)
+                .show();
     }
 
     // ---------- Call ----------
@@ -848,6 +1094,9 @@ public class MainActivity extends Activity {
                 s2.setTextColor(Color.parseColor("#8A8A94"));
             }
             v.findViewById(R.id.btnCall).setOnClickListener(x -> callNumber(c.mobile));
+            Button wa = v.findViewById(R.id.btnWa);
+            wa.setVisibility(c.needsWhatsApp() && waNumber(c.mobile) != null ? View.VISIBLE : View.GONE);
+            wa.setOnClickListener(x -> openWhatsApp(c));
             // reset swipe state and connect the recycle bin to delete
             v.findViewById(R.id.card).setTranslationX(0f);
             v.findViewById(R.id.binLayer).setVisibility(View.INVISIBLE);

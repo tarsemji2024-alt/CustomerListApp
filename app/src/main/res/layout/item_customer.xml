@@ -35,12 +35,22 @@
                 android:layout_height="wrap_content" android:textColor="#8A8A94" android:textSize="12sp" />
         </LinearLayout>
 
-        <Button android:id="@+id/btnCall" android:layout_width="wrap_content"
-            android:layout_height="46dp" android:minWidth="0dp" android:minHeight="0dp"
-            android:paddingLeft="18dp" android:paddingRight="18dp"
-            android:text="📞 Call" android:textAllCaps="false" android:textStyle="bold"
-            android:textSize="14sp" android:textColor="#FFFFFF"
-            android:background="@drawable/call_button" android:stateListAnimator="@null"
-            android:focusable="false" android:layout_marginLeft="10dp" />
+        <LinearLayout android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:orientation="vertical" android:layout_marginLeft="10dp">
+            <Button android:id="@+id/btnCall" android:layout_width="match_parent"
+                android:layout_height="46dp" android:minWidth="0dp" android:minHeight="0dp"
+                android:paddingLeft="18dp" android:paddingRight="18dp"
+                android:text="📞 Call" android:textAllCaps="false" android:textStyle="bold"
+                android:textSize="14sp" android:textColor="#FFFFFF"
+                android:background="@drawable/call_button" android:stateListAnimator="@null"
+                android:focusable="false" />
+            <Button android:id="@+id/btnWa" android:layout_width="match_parent"
+                android:layout_height="38dp" android:minWidth="0dp" android:minHeight="0dp"
+                android:layout_marginTop="6dp" android:visibility="gone"
+                android:text="💬 WhatsApp" android:textAllCaps="false"
+                android:textSize="12sp" android:textColor="#FFFFFF"
+                android:background="@drawable/glass_button" android:stateListAnimator="@null"
+                android:focusable="false" />
+        </LinearLayout>
     </LinearLayout>
 </FrameLayout>

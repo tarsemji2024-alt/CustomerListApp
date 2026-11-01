@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="wa_auto_desc">Lets Customer List tap the Send button in WhatsApp for messages you start from the app. It only looks at the WhatsApp screen while a message is being sent.</string>
+</resources>
